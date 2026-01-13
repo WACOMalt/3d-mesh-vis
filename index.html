@@ -162,19 +162,21 @@
         <div class="stat">Faces: <strong id="face-count">0</strong></div>
     </div>
 
-    <!-- Three.js (local) -->
-    <script src="three.min.js"></script>
-    
-    <!-- OrbitControls (local) -->
-    <script src="OrbitControls.js"></script>
-    
-    <!-- OBJLoader (local) -->
-    <script src="OBJLoader.js"></script>
-    
-    <!-- GSAP (local) -->
+    <!-- Import Map for ES Modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./three.module.js",
+            "three/addons/controls/OrbitControls.js": "./OrbitControls.js",
+            "three/addons/loaders/OBJLoader.js": "./OBJLoader.js"
+        }
+    }
+    </script>
+
+    <!-- GSAP (UMD) -->
     <script src="gsap.min.js"></script>
 
-    <!-- Main application script -->
-    <script src="main.js"></script>
+    <!-- Main application script as ES module -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
