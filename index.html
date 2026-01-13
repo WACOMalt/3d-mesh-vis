@@ -162,37 +162,19 @@
         <div class="stat">Faces: <strong id="face-count">0</strong></div>
     </div>
 
-    <!-- Three.js from CDN -->
-    <script src="https://unpkg.com/three@r128/build/three.min.js"></script>
+    <!-- Three.js (local) -->
+    <script src="three.min.js"></script>
     
-    <!-- OrbitControls from CDN -->
-    <script src="https://unpkg.com/three@r128/examples/js/controls/OrbitControls.js"></script>
+    <!-- OrbitControls (local) -->
+    <script src="OrbitControls.js"></script>
     
-    <!-- OBJLoader from CDN -->
-    <script src="https://unpkg.com/three@r128/examples/js/loaders/OBJLoader.js"></script>
+    <!-- OBJLoader (local) -->
+    <script src="OBJLoader.js"></script>
     
-    <!-- GSAP for animations from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- GSAP (local) -->
+    <script src="gsap.min.js"></script>
 
-    <!-- Main application script - load after all dependencies -->
-    <script>
-        // Wait for all scripts to load before starting main.js
-        function initApp() {
-            if (typeof THREE === 'undefined' || typeof gsap === 'undefined') {
-                setTimeout(initApp, 100);
-                return;
-            }
-            // Load main.js dynamically after dependencies are ready
-            const script = document.createElement('script');
-            script.src = 'main.js';
-            document.body.appendChild(script);
-        }
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            initApp();
-        }
-    </script>
+    <!-- Main application script -->
+    <script src="main.js"></script>
 </body>
 </html>
