@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Modeling Visualizations</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+      }
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      #canvas-container {
+        flex: 1;
+        position: relative;
+      }
+      canvas {
+        display: block;
+      }
+      #controls {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      select {
+        padding: 5px;
+        font-size: 16px;
+      }
+      button {
+        padding: 10px 20px;
+        background: rgba(0, 123, 255, 0.8);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: rgba(0, 123, 255, 1);
+      }
+      #info {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        color: white;
+        font-size: 18px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-aca6802d.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div id="canvas-container">
+        <div id="controls">
+          <select id="shape-select">
+            <option value="cube">Cube</option>
+            <option value="cylinder8">Cylinder (8 sides)</option>
+          </select>
+          <button id="show-vertices">Show Vertices</button>
+          <button id="connect-edges">Connect Edges</button>
+          <button id="form-faces">Form Faces</button>
+          <button id="assemble-mesh">Assemble Mesh</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div id="info">Click buttons to visualize 3D modeling concepts</div>
+      </div>
+    </div>
+    
+  </body>
+</html>
