@@ -175,6 +175,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <!-- Main application script - load after all dependencies -->
-    <script src="main.js" defer></script>
+    <script>
+        // Wait for all scripts to load before starting main.js
+        function initApp() {
+            if (typeof THREE === 'undefined' || typeof gsap === 'undefined') {
+                setTimeout(initApp, 100);
+                return;
+            }
+            // Load main.js dynamically after dependencies are ready
+            const script = document.createElement('script');
+            script.src = 'main.js';
+            document.body.appendChild(script);
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
 </body>
 </html>
