@@ -120,6 +120,15 @@
     </style>
 </head>
 <body>
+    <!-- Suppress Three.js deprecation warning immediately -->
+    <script>
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (typeof args[0] === 'string' && args[0].includes('deprecated')) return;
+            originalWarn.apply(console, args);
+        };
+    </script>
+
     <div id="canvas-container"></div>
 
     <div id="controls">
@@ -173,15 +182,6 @@
     
     <!-- GSAP (local) -->
     <script src="gsap.min.js"></script>
-
-    <!-- Suppress Three.js deprecation warning -->
-    <script>
-        const originalWarn = console.warn;
-        console.warn = function(...args) {
-            if (args[0]?.includes?.('deprecated')) return;
-            originalWarn.apply(console, args);
-        };
-    </script>
 
     <!-- Main application script -->
     <script src="main.js"></script>
