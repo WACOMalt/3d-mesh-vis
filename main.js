@@ -41,9 +41,22 @@ scene.add(camera);
 axesHelper.position.set(1, 0.50, -1);
 axesHelper.scale.set(0.1, 0.1, 0.1);
 
-// Floor axes helper
-const floorAxesHelper = new THREE.AxesHelper(6);
-floorAxesHelper.setColors(new THREE.Color(0xff0000), new THREE.Color(0x000000), new THREE.Color(0x0000ff));
+// Floor axes helper with custom colors
+const floorAxesGeometry = new THREE.BufferGeometry();
+const floorAxesPositions = new Float32Array([
+    0, 0, 0,  6, 0, 0,  // X axis (red)
+    0, 0, 0,  0, 0, 0,  // Y axis (black)
+    0, 0, 0,  0, 0, 6   // Z axis (blue)
+]);
+const floorAxesColors = new Float32Array([
+    1, 0, 0,  1, 0, 0,  // Red for X
+    0, 0, 0,  0, 0, 0,  // Black for Y
+    0, 0, 1,  0, 0, 1   // Blue for Z
+]);
+floorAxesGeometry.setAttribute('position', new THREE.BufferAttribute(floorAxesPositions, 3));
+floorAxesGeometry.setAttribute('color', new THREE.BufferAttribute(floorAxesColors, 3));
+const floorAxesMaterial = new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 });
+const floorAxesHelper = new THREE.LineSegments(floorAxesGeometry, floorAxesMaterial);
 floorAxesHelper.scale.set(1, -1, 1);
 floorAxesHelper.position.y = -0.999;
 scene.add(floorAxesHelper);
