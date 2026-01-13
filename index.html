@@ -165,14 +165,40 @@
     <!-- Three.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-    <!-- Three.js Examples (OrbitControls, OBJLoader) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/OBJLoader.js"></script>
+    <!-- Three.js Examples as separate scripts that expose to THREE -->
+    <script>
+        // Ensure THREE is loaded before loading examples
+        if (typeof THREE === 'undefined') {
+            throw new Error('Three.js failed to load');
+        }
+    </script>
+    
+    <!-- OrbitControls -->
+    <script>
+        var OrbitControls;
+        fetch('https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js')
+            .then(r => r.text())
+            .then(text => {
+                eval(text.replace('export', '//export'));
+                OrbitControls = THREE.OrbitControls;
+            });
+    </script>
+    
+    <!-- OBJLoader -->
+    <script>
+        var OBJLoader;
+        fetch('https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/OBJLoader.js')
+            .then(r => r.text())
+            .then(text => {
+                eval(text.replace('export', '//export'));
+                OBJLoader = THREE.OBJLoader;
+            });
+    </script>
     
     <!-- GSAP for animations from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-    <!-- Main application script -->
-    <script src="main.js"></script>
+    <!-- Main application script - load after all dependencies -->
+    <script src="main.js" defer></script>
 </body>
 </html>
