@@ -1,84 +1,178 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D Modeling Visualizations</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Mesh Visualizer</title>
     <style>
-      body {
-        margin: 0;
-        padding: 0;
-        background: #000;
-        font-family: Arial, sans-serif;
-        overflow: hidden;
-      }
-      #app {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-      }
-      #canvas-container {
-        flex: 1;
-        position: relative;
-      }
-      canvas {
-        display: block;
-      }
-      #controls {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 100;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      select {
-        padding: 5px;
-        font-size: 16px;
-      }
-      button {
-        padding: 10px 20px;
-        background: rgba(0, 123, 255, 0.8);
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-      }
-      button:hover {
-        background: rgba(0, 123, 255, 1);
-      }
-      #info {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        color: white;
-        font-size: 18px;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 10px;
-        border-radius: 5px;
-      }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        select, input[type="file"] {
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        select:hover, input[type="file"]:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        select option {
+            background: #222;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 16px;
+            background: rgba(0, 123, 255, 0.8);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: rgba(0, 123, 255, 1);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+            max-width: 300px;
+        }
+
+        .stat {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .stat strong {
+            color: #fff;
+        }
+
+        h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
     </style>
-  </head>
-  <body>
-    <div id="app">
-      <div id="canvas-container">
-        <div id="controls">
-          <select id="shape-select">
-            <option value="cube">Cube</option>
-            <option value="cylinder8">Cylinder (8 sides)</option>
-          </select>
-          <button id="show-vertices">Show Vertices</button>
-          <button id="connect-edges">Connect Edges</button>
-          <button id="form-faces">Form Faces</button>
-          <button id="assemble-mesh">Assemble Mesh</button>
-          <button id="reset">Reset</button>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="controls">
+        <div class="control-group">
+            <h3>3D Mesh Visualizer</h3>
         </div>
-        <div id="info">Click buttons to visualize 3D modeling concepts</div>
-      </div>
+
+        <div class="control-group">
+            <label for="shape-select">Select Shape:</label>
+            <select id="shape-select">
+                <option value="cube">Cube</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="cone">Cone</option>
+                <option value="sphere">Sphere</option>
+                <option value="obj">Load OBJ File</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <input type="file" id="obj-file" accept=".obj" style="display:none;">
+        </div>
+
+        <div class="control-group">
+            <label>Visualization Steps:</label>
+            <div class="button-group">
+                <button id="show-vertices">1. Show Vertices</button>
+                <button id="connect-edges">2. Connect Edges</button>
+                <button id="form-faces">3. Form Faces</button>
+                <button id="assemble-mesh">4. Assemble Mesh</button>
+                <button id="reset">Reset</button>
+            </div>
+        </div>
     </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+
+    <div id="info">
+        <h3>Info</h3>
+        <div id="info-text">Click buttons to visualize 3D modeling concepts</div>
+        <div class="stat">Vertices: <strong id="vertex-count">0</strong></div>
+        <div class="stat">Edges: <strong id="edge-count">0</strong></div>
+        <div class="stat">Faces: <strong id="face-count">0</strong></div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Three.js Examples (OrbitControls, OBJLoader) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/OBJLoader.js"></script>
+    
+    <!-- GSAP for animations from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Main application script -->
+    <script src="main.js"></script>
+</body>
 </html>
