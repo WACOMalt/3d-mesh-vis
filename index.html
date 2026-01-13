@@ -162,21 +162,28 @@
         <div class="stat">Faces: <strong id="face-count">0</strong></div>
     </div>
 
-    <!-- Import Map for ES Modules -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "./three.module.js",
-            "three/addons/controls/OrbitControls.js": "./OrbitControls.js",
-            "three/addons/loaders/OBJLoader.js": "./OBJLoader.js"
-        }
-    }
-    </script>
-
-    <!-- GSAP (UMD) -->
+    <!-- Three.js (local) - UMD build -->
+    <script src="three.min.js"></script>
+    
+    <!-- OrbitControls (local) -->
+    <script src="OrbitControls.js"></script>
+    
+    <!-- OBJLoader (local) -->
+    <script src="OBJLoader.js"></script>
+    
+    <!-- GSAP (local) -->
     <script src="gsap.min.js"></script>
 
-    <!-- Main application script as ES module -->
-    <script type="module" src="main.js"></script>
+    <!-- Suppress Three.js deprecation warning -->
+    <script>
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0]?.includes?.('deprecated')) return;
+            originalWarn.apply(console, args);
+        };
+    </script>
+
+    <!-- Main application script -->
+    <script src="main.js"></script>
 </body>
 </html>

@@ -1,10 +1,6 @@
 // 3D Mesh Visualizer - Simple Vanilla JavaScript Version
 // No build process required. Open index.html directly in a browser.
 
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-
 // ===== Scene Setup =====
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111111);
@@ -66,7 +62,7 @@ floorAxesHelper.position.y = -0.999;
 scene.add(floorAxesHelper);
 
 // ===== Controls =====
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
@@ -108,7 +104,7 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
     if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            const objLoader = new OBJLoader();
+            const objLoader = new THREE.OBJLoader();
             try {
                 const object = objLoader.parse(event.target.result);
                 if (object.children.length > 0) {
