@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="3D Mesh Vis">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" href="/icon-192.png">
-    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <title>3D Mesh Visualizer</title>
     <style>
         * {
@@ -324,7 +324,7 @@
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
+            navigator.serviceWorker.register('service-worker.js')
                 .then(reg => console.log('Service Worker registered'))
                 .catch(err => console.log('Service Worker registration failed:', err));
         }

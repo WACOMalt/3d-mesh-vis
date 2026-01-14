@@ -2,33 +2,33 @@
   "name": "3D Mesh Visualizer",
   "short_name": "3D Mesh Vis",
   "description": "Interactive 3D visualization tool for exploring vertices, edges, faces, and mesh assembly with custom lighting and shaders",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#333333",
   "theme_color": "#007bff",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-maskable-192.png",
+      "src": "icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-maskable-512.png",
+      "src": "icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -36,12 +36,12 @@
   ],
   "screenshots": [
     {
-      "src": "/screenshot-540.png",
+      "src": "screenshot-540.png",
       "sizes": "540x720",
       "form_factor": "narrow"
     },
     {
-      "src": "/screenshot-1280.png",
+      "src": "screenshot-1280.png",
       "sizes": "1280x720",
       "form_factor": "wide"
     }
