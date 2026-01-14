@@ -676,8 +676,8 @@ function autoScaleAndPositionModel(geometry) {
     const fovRad = THREE.MathUtils.degToRad(effectiveFOV);
     // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
     const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
-    // Add some buffer (1.3x) to ensure comfortable viewing
-    const cameraDistance = requiredDistance * 1.3;
+    // Add buffer (1.43x = 1.3 * 1.1 for comfortable viewing with extra space)
+    const cameraDistance = requiredDistance * 1.43;
     
     console.log('Aspect ratio:', aspectRatio, 'Effective FOV:', effectiveFOV, 'Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
     
