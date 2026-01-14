@@ -6,7 +6,7 @@ Usage: blender --background --python render-teapot-blender.py
 
 import bpy
 import os
-import subprocess
+from mathutils import Vector
 
 # Get script directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,7 +49,8 @@ except:
 # Setup scene
 scene = bpy.context.scene
 scene.world.use_nodes = True
-scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.2, 0.2, 0.2, 1.0)  # Dark grey background
+scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.2, 0.2, 0.2, 0.0)  # Transparent background
+scene.render.film_transparent = True  # Enable transparent film
 
 # Add lighting
 light = bpy.data.lights.new(name="MainLight", type='SUN')
@@ -76,7 +77,23 @@ for obj in bpy.context.selected_objects:
         bsdf.inputs["Roughness"].default_value = 0.4
         
         obj.data.materials.append(mat)
-        obj.scale = (0.015, 0.015, 0.015)
+        
+        # Calculate bounding box using local coordinates
+        bbox_min = Vector(obj.bound_box[0])
+        bbox_max = Vector(obj.bound_box[6])
+        bbox_size = bbox_max - bbox_min
+        bbox_center = bbox_min + (bbox_size / 2)
+        
+        # Calculate the largest dimension
+        max_dim = max(bbox_size.x, bbox_size.y, bbox_size.z)
+        
+        # Scale to fit (target ~2.0 units in largest dimension)
+        target_size = 2.0
+        scale_factor = target_size / max_dim if max_dim > 0 else 1.0
+        obj.scale = (scale_factor, scale_factor, scale_factor)
+        
+        # Center at origin by adjusting location
+        obj.location = -bbox_center * scale_factor
 
 # Setup camera
 camera = bpy.data.cameras.new(name="Camera")
@@ -88,13 +105,15 @@ scene.camera = camera_obj
 # Render settings
 scene.render.engine = 'CYCLES'
 scene.cycles.samples = 128
-scene.render.filepath = os.path.join(script_dir, 'icon-512.png')
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGBA'
+scene.render.image_settings.color_depth = '8'
+scene.render.film_transparent = True  # Transparent background
 
 # Render 512x512
 scene.render.resolution_x = 512
 scene.render.resolution_y = 512
+scene.render.filepath = os.path.join(script_dir, 'icon-512.png')
 bpy.ops.render.render(write_still=True)
 print("✓ Generated icon-512.png")
 
