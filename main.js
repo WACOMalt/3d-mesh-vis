@@ -353,10 +353,11 @@ function showVertices() {
     gsap.killTweensOf(vertexScales);
 
     // Calculate proportional delays
-    const ANIMATION_DURATION = 0.5;
+    const BASE_DURATION = 0.5;
     const MAX_TIME = animationMaxTime;
     const itemCount = verticesData.length;
-    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1)) : 0;
+    const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
+    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
 
     if (!vertices.visible) {
         // Show with animation
@@ -381,7 +382,7 @@ function showVertices() {
             verticesData.forEach((pos, index) => {
                 gsap.to(vertexScales, {
                     [index]: 1,
-                    duration: ANIMATION_DURATION,
+                    duration: effectiveDuration,
                     delay: index * delayPerItem,
                     ease: "none",
                     onUpdate: () => {
@@ -410,7 +411,7 @@ function showVertices() {
                 const reverseDelay = (reverseCount - index) * delayPerItem;
                 gsap.to(vertexScales, {
                     [index]: 0,
-                    duration: ANIMATION_DURATION,
+                    duration: effectiveDuration,
                     delay: reverseDelay,
                     ease: "none",
                     onUpdate: () => {
@@ -481,10 +482,11 @@ function connectEdges() {
     gsap.killTweensOf(edgeVisibility);
 
     // Calculate proportional delays
-    const ANIMATION_DURATION = 0.3;
+    const BASE_DURATION = 0.3;
     const MAX_TIME = animationMaxTime;
     const itemCount = edgesData.length;
-    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1)) : 0;
+    const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
+    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = edgesMesh.geometry;
 
     if (!edgesMesh.visible) {
@@ -510,7 +512,7 @@ function connectEdges() {
             edgesData.forEach((edge, edgeIndex) => {
                 gsap.to(edgeVisibility, {
                     [edgeIndex]: 1,
-                    duration: ANIMATION_DURATION,
+                    duration: effectiveDuration,
                     delay: edgeIndex * delayPerItem,
                     ease: "none",
                     onUpdate: () => {
@@ -534,7 +536,7 @@ function connectEdges() {
                 const reverseDelay = (reverseCount - edgeIndex) * delayPerItem;
                 gsap.to(edgeVisibility, {
                     [edgeIndex]: 0,
-                    duration: ANIMATION_DURATION,
+                    duration: effectiveDuration,
                     delay: reverseDelay,
                     ease: "none",
                     onUpdate: () => {
@@ -604,10 +606,11 @@ function formFaces() {
     gsap.killTweensOf(faceVisibility);
 
     // Calculate proportional delays
-    const ANIMATION_DURATION = 0.4;
+    const BASE_DURATION = 0.4;
     const MAX_TIME = animationMaxTime;
     const itemCount = facesData.length;
-    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1)) : 0;
+    const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
+    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = facesMesh.geometry;
 
     if (!facesMesh.visible) {
@@ -635,7 +638,7 @@ function formFaces() {
             facesData.forEach((face, faceIndex) => {
                 gsap.to(faceVisibility, {
                     [faceIndex]: 1,
-                    duration: ANIMATION_DURATION,
+                    duration: effectiveDuration,
                     delay: faceIndex * delayPerItem,
                     ease: "none",
                     onUpdate: () => {
@@ -660,7 +663,7 @@ function formFaces() {
                 const reverseDelay = (reverseCount - faceIndex) * delayPerItem;
                 gsap.to(faceVisibility, {
                     [faceIndex]: 0,
-                    duration: ANIMATION_DURATION,
+                    duration: effectiveDuration,
                     delay: reverseDelay,
                     ease: "none",
                     onUpdate: () => {
