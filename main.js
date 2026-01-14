@@ -233,10 +233,16 @@ document.getElementById('lighting-rotation').addEventListener('input', (e) => {
     document.getElementById('lighting-rotation-value').textContent = lightingRotation + '°';
 });
 
+let vertexSizeTimeout;
 document.getElementById('vertex-size').addEventListener('input', (e) => {
     vertexSize = parseFloat(e.target.value);
-    updateVertexGeometry();
     document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
+    
+    // Debounce the geometry update to avoid lag while dragging
+    clearTimeout(vertexSizeTimeout);
+    vertexSizeTimeout = setTimeout(() => {
+        if (vertices) updateVertexGeometry();
+    }, 150);
 });
 
 document.getElementById('animation-max-time').addEventListener('input', (e) => {
