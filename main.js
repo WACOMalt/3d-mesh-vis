@@ -1,5 +1,9 @@
-// 3D Mesh Visualizer - Simple Vanilla JavaScript Version
-// No build process required. Open index.html directly in a browser.
+// 3D Mesh Visualizer - ES Modules Version
+// Uses importmap for Three.js imports
+
+import * as THREE from 'three';
+import { OrbitControls } from 'three/controls';
+import { OBJLoader } from 'three/loaders';
 
 // ===== Scene Setup =====
 const scene = new THREE.Scene();

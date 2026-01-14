@@ -266,22 +266,21 @@
         </div>
     </div>
 
-    <!-- Three.js (local) - UMD build -->
-    <script src="three.min.js"></script>
-    
-    <!-- OrbitControls (local) -->
-    <script src="OrbitControls.js"></script>
-    
-    <!-- OBJLoader (local) -->
-    <script src="OBJLoader.js"></script>
-    
-    <!-- RGBELoader (local) -->
-    <script src="RGBELoader.js"></script>
+    <!-- Three.js via CDN with importmap -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.149.0/+esm",
+        "three/controls": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/controls/OrbitControls.js",
+        "three/loaders": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/loaders/OBJLoader.js"
+      }
+    }
+    </script>
     
     <!-- GSAP (local) -->
     <script src="gsap.min.js"></script>
 
-    <!-- Main application script -->
-    <script src="main.js"></script>
+    <!-- Main application script as module -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
