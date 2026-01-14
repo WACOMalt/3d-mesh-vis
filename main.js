@@ -211,9 +211,8 @@ const edgeShaderMaterial = new THREE.ShaderMaterial({
 // ===== Custom Shader Material for Faces =====
 const faceShaderMaterial = new THREE.ShaderMaterial({
     uniforms: {
-        keyLightPos: { value: new THREE.Vector3(2, 2, 1) },
-        fillLightPos: { value: new THREE.Vector3(-2, 1, 1) },
-        backLightPos: { value: new THREE.Vector3(0, -1, -2) },
+        keyLightPos: { value: new THREE.Vector3(4, 5, 3) },
+        rimLightPos: { value: new THREE.Vector3(-4, 5, -3) },
         outsideColor: { value: new THREE.Color(0x0044ff) },
         insideColor: { value: new THREE.Color(0xff6600) },
         inside: { value: 0.0 }
@@ -233,8 +232,7 @@ const faceShaderMaterial = new THREE.ShaderMaterial({
     `,
     fragmentShader: `
         uniform vec3 keyLightPos;
-        uniform vec3 fillLightPos;
-        uniform vec3 backLightPos;
+        uniform vec3 rimLightPos;
         uniform vec3 outsideColor;
         uniform vec3 insideColor;
         uniform float inside;
@@ -253,26 +251,22 @@ const faceShaderMaterial = new THREE.ShaderMaterial({
             float dither = hash(vWorldPosition * 10.0);
             if (dither > vVisibility) discard;
 
-            // Different colors for outside vs inside (do NOT rely on gl_FrontFacing;
-            // Three.js may flip winding for BackSide rendering)
+            // Different colors for outside vs inside
             vec3 baseColor = mix(outsideColor, insideColor, inside);
             vec3 N = normalize(mix(vNormal, -vNormal, inside));
             
             // Normalized light directions
             vec3 keyLight = normalize(keyLightPos - vWorldPosition);
-            vec3 fillLight = normalize(fillLightPos - vWorldPosition);
-            vec3 backLight = normalize(backLightPos - vWorldPosition);
+            vec3 rimLight = normalize(rimLightPos - vWorldPosition);
             
             // Lambert diffuse
-            float keyDiff = max(dot(N, keyLight), 0.0) * 1.0;
-            float fillDiff = max(dot(N, fillLight), 0.0) * 0.3;
-            float backDiff = max(dot(N, backLight), 0.0) * 0.6;
+            float keyDiff = max(dot(N, keyLight), 0.0) * 2.0;
+            float rimDiff = max(dot(N, rimLight), 0.0) * 1.5;
             
-            float totalDiffuse = keyDiff + fillDiff + backDiff;
+            float totalDiffuse = keyDiff + rimDiff;
             vec3 diffuseColor = baseColor * totalDiffuse;
 
-            vec3 ambient = baseColor * 0.12;
-            vec3 finalColor = ambient + diffuseColor;
+            vec3 finalColor = diffuseColor;
 
             gl_FragColor = vec4(finalColor, 1.0);
         }
@@ -320,22 +314,19 @@ function rotateLights(angle) {
     // Update shader uniforms if assembled mesh exists
     if (mesh && mesh.material && mesh.material.uniforms) {
         mesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
-        mesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
-        mesh.material.uniforms.backLightPos.value.copy(backLight.position);
+        mesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
     
     // Update shader uniforms if faces mesh exists
     if (facesMesh && facesMesh.material && facesMesh.material.uniforms) {
         facesMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
-        facesMesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
-        facesMesh.material.uniforms.backLightPos.value.copy(backLight.position);
+        facesMesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
 
     // Update shader uniforms if inside faces mesh exists
     if (facesInnerMesh && facesInnerMesh.material && facesInnerMesh.material.uniforms) {
         facesInnerMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
-        facesInnerMesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
-        facesInnerMesh.material.uniforms.backLightPos.value.copy(backLight.position);
+        facesInnerMesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
 }
 
@@ -778,8 +769,7 @@ function formFaces() {
         outsideMaterial.side = THREE.FrontSide;
         outsideMaterial.uniforms.inside.value = 0.0;
         outsideMaterial.uniforms.keyLightPos.value.copy(keyLight.position);
-        outsideMaterial.uniforms.fillLightPos.value.copy(fillLight.position);
-        outsideMaterial.uniforms.backLightPos.value.copy(backLight.position);
+        outsideMaterial.uniforms.rimLightPos.value.copy(rimLight.position);
         facesMesh = new THREE.Mesh(geometry, outsideMaterial);
         facesMesh.renderOrder = 1; // draw before assembled mesh
         facesMesh.visible = false;
@@ -794,8 +784,7 @@ function formFaces() {
         insideMaterial.polygonOffsetFactor = 2;
         insideMaterial.polygonOffsetUnits = 2;
         insideMaterial.uniforms.keyLightPos.value.copy(keyLight.position);
-        insideMaterial.uniforms.fillLightPos.value.copy(fillLight.position);
-        insideMaterial.uniforms.backLightPos.value.copy(backLight.position);
+        insideMaterial.uniforms.rimLightPos.value.copy(rimLight.position);
         facesInnerMesh = new THREE.Mesh(geometry, insideMaterial);
         facesInnerMesh.renderOrder = 1.05;
         facesInnerMesh.visible = false;
@@ -920,8 +909,7 @@ function assembleMesh() {
                 roughness: { value: 0.2 },
                 metalness: { value: 0.0 },
                 keyLightPos: { value: keyLight.position.clone() },
-                fillLightPos: { value: fillLight.position.clone() },
-                backLightPos: { value: backLight.position.clone() }
+                rimLightPos: { value: rimLight.position.clone() }
             },
             vertexShader: `
                 varying vec3 vNormal;
@@ -942,8 +930,7 @@ function assembleMesh() {
                 uniform float roughness;
                 uniform float metalness;
                 uniform vec3 keyLightPos;
-                uniform vec3 fillLightPos;
-                uniform vec3 backLightPos;
+                uniform vec3 rimLightPos;
                 
                 varying vec3 vNormal;
                 varying vec3 vWorldPosition;
@@ -988,13 +975,11 @@ function assembleMesh() {
                     
                     // Prepare light directions (relative positions)
                     vec3 lightDir1 = normalize(keyLightPos - vWorldPosition);
-                    vec3 lightDir2 = normalize(fillLightPos - vWorldPosition);
-                    vec3 lightDir3 = normalize(backLightPos - vWorldPosition);
+                    vec3 lightDir2 = normalize(rimLightPos - vWorldPosition);
                     
                     // Light intensities
                     float intensity1 = 2.0;
-                    float intensity2 = 0.6;
-                    float intensity3 = 1.2;
+                    float intensity2 = 1.5;
                     
                     // Fresnel base (0.04 for non-metallic)
                     vec3 F0 = mix(vec3(0.04), baseColor, metalness);
@@ -1020,11 +1005,11 @@ function assembleMesh() {
                         Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
                     }
                     
-                    // Light 2 (Fill light)
+                    // Light 2 (Rim light)
                     {
                         vec3 L = lightDir2;
                         vec3 H = normalize(V + L);
-                        float distance = length(fillLightPos - vWorldPosition);
+                        float distance = length(rimLightPos - vWorldPosition);
                         float attenuation = 1.0 / (distance * distance + 1.0);
                         vec3 radiance = vec3(1.0) * intensity2 * attenuation;
                         
@@ -1039,29 +1024,7 @@ function assembleMesh() {
                         Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
                     }
                     
-                    // Light 3 (Back light)
-                    {
-                        vec3 L = lightDir3;
-                        vec3 H = normalize(V + L);
-                        float distance = length(backLightPos - vWorldPosition);
-                        float attenuation = 1.0 / (distance * distance + 1.0);
-                        vec3 radiance = vec3(1.0) * intensity3 * attenuation;
-                        
-                        float NDF = GGX(N, H, roughness);
-                        float G = GeometrySmith(max(dot(N, V), 0.0), max(dot(N, L), 0.0), roughness);
-                        vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
-                        
-                        vec3 kS = F;
-                        vec3 kD = (vec3(1.0) - kS) * (1.0 - metalness);
-                        
-                        vec3 specular = NDF * G * F / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
-                        Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
-                    }
-                    
-                    // Simple ambient lighting
-                    vec3 ambient = baseColor * 0.15;
-                    
-                    vec3 finalColor = ambient + Lo;
+                    vec3 finalColor = Lo;
                     
                     gl_FragColor = vec4(finalColor, 1.0);
                 }
