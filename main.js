@@ -181,6 +181,8 @@ function updateVertexGeometry() {
 }
 
 // ===== Initialization =====
+console.log('Initializing...');
+console.log('vertex-size input element:', document.getElementById('vertex-size'));
 updateGeometry();
 rotateLights(lightingRotation);
 
@@ -235,12 +237,14 @@ document.getElementById('lighting-rotation').addEventListener('input', (e) => {
 
 let vertexSizeTimeout;
 document.getElementById('vertex-size').addEventListener('input', (e) => {
+    console.log('vertex-size input event fired:', e.target.value);
     vertexSize = parseFloat(e.target.value);
     document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
     
     // Debounce the geometry update to avoid lag while dragging
     clearTimeout(vertexSizeTimeout);
     vertexSizeTimeout = setTimeout(() => {
+        console.log('vertex-size geometry update, vertices exist:', !!vertices);
         if (vertices) updateVertexGeometry();
     }, 150);
 });
