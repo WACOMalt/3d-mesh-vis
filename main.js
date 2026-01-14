@@ -581,9 +581,9 @@ function autoScaleAndPositionModel(geometry) {
      * 1. If longest dimension > 10 units: scale down to 10 units
      * 2. If longest dimension < 5 units: scale up to 5 units
      * 3. Apply vertical offset to place bottom of bounding box on floor (Y=-1)
-     * Returns the center of the final bounding box for camera targeting
+     * Returns object with center and required camera distance to view entire model
      */
-    if (!geometry) return new THREE.Vector3(0, 0, 0);
+    if (!geometry) return { center: new THREE.Vector3(0, 0, 0), distance: 3 };
     
     // Calculate bounding box
     geometry.computeBoundingBox();
@@ -621,6 +621,7 @@ function autoScaleAndPositionModel(geometry) {
     geometry.computeBoundingBox();
     const scaledBbox = geometry.boundingBox;
     const scaledBboxMin = scaledBbox.min;
+    const scaledBboxSize = scaledBbox.getSize(new THREE.Vector3());
     
     console.log('After scaling, new min Y:', scaledBboxMin.y);
     
@@ -645,10 +646,24 @@ function autoScaleAndPositionModel(geometry) {
     geometry.computeBoundingBox();
     const finalBbox = geometry.boundingBox;
     const bboxCenter = finalBbox.getCenter(new THREE.Vector3());
+    const finalBboxSize = finalBbox.getSize(new THREE.Vector3());
     console.log('Final bounding box min Y:', finalBbox.min.y, '(should be -1 for floor)');
     console.log('Bounding box center:', bboxCenter.clone());
     
-    return bboxCenter;
+    // Calculate required camera distance to view entire model
+    // Use the largest dimension of the bounding box
+    const maxFinalDimension = Math.max(finalBboxSize.x, finalBboxSize.y, finalBboxSize.z);
+    // Camera FOV is 75 degrees
+    const cameraFOV = 75;
+    const fovRad = THREE.MathUtils.degToRad(cameraFOV);
+    // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
+    const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
+    // Add some buffer (1.3x) to ensure comfortable viewing
+    const cameraDistance = requiredDistance * 1.3;
+    
+    console.log('Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
+    
+    return { center: bboxCenter, distance: cameraDistance };
 }
 
 function updateGeometry() {
@@ -658,9 +673,16 @@ function updateGeometry() {
         currentGeometry = shapeGeometries[currentShape]();
     }
     // Apply auto-scaling and floor positioning to all geometries
-    const bboxCenter = autoScaleAndPositionModel(currentGeometry);
+    const result = autoScaleAndPositionModel(currentGeometry);
+    const { center, distance } = result;
+    
     // Update camera target to center on the model
-    controls.target.copy(bboxCenter);
+    controls.target.copy(center);
+    
+    // Position camera back from the center to view entire model
+    const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
+    camera.position.copy(center).addScaledVector(cameraDirection, distance);
+    
     controls.update();
     extractData();
     updateInfo();
