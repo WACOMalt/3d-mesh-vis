@@ -419,6 +419,8 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
                     if (!currentGeometry) {
                         currentGeometry = object.children[0];
                     }
+                    // Auto-scale and position the model based on bounding box
+                    autoScaleAndPositionModel(currentGeometry);
                     updateGeometry();
                     resetScene();
                 }
@@ -574,6 +576,63 @@ bgColorInput.addEventListener('input', (e) => {
 });
 
 // ===== Core Functions =====
+
+function autoScaleAndPositionModel(geometry) {
+    /**
+     * Automatically scales and positions a model based on its bounding box:
+     * 1. If longest dimension > 10 units: scale down to 10 units
+     * 2. If longest dimension < 5 units: scale up to 5 units
+     * 3. Apply vertical offset to place bottom of bounding box on floor (Y=0)
+     */
+    if (!geometry) return;
+    
+    // Calculate bounding box
+    geometry.computeBoundingBox();
+    const bbox = geometry.boundingBox;
+    const bboxSize = bbox.getSize(new THREE.Vector3());
+    const bboxMin = bbox.min;
+    
+    // Find longest dimension
+    const maxDimension = Math.max(bboxSize.x, bboxSize.y, bboxSize.z);
+    
+    // Determine scale factor
+    let scaleFactor = 1.0;
+    if (maxDimension > 10) {
+        scaleFactor = 10 / maxDimension;
+    } else if (maxDimension < 5) {
+        scaleFactor = 5 / maxDimension;
+    }
+    
+    // Apply scaling to all vertices
+    if (scaleFactor !== 1.0) {
+        const posAttr = geometry.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const vertex = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+            vertex.multiplyScalar(scaleFactor);
+            posAttr.setXYZ(i, vertex.x, vertex.y, vertex.z);
+        }
+        posAttr.needsUpdate = true;
+    }
+    
+    // Recalculate bounding box after scaling
+    geometry.computeBoundingBox();
+    const scaledBbox = geometry.boundingBox;
+    const scaledBboxMin = scaledBbox.min;
+    
+    // Calculate vertical offset to place bottom on floor
+    const verticalOffset = -scaledBboxMin.y;
+    
+    // Apply vertical offset to all vertices
+    if (Math.abs(verticalOffset) > 0.0001) {
+        const posAttr = geometry.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const vertex = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+            vertex.y += verticalOffset;
+            posAttr.setXYZ(i, vertex.x, vertex.y, vertex.z);
+        }
+        posAttr.needsUpdate = true;
+    }
+}
 
 function updateGeometry() {
     if (currentShape === 'obj') {
