@@ -72,7 +72,8 @@ let currentGeometry = null;
 let verticesData = [];
 let edgesData = [];
 let facesData = [];
-let vertices = [];
+let vertices = null;  // InstancedMesh
+let vertexScales = [];  // Track individual vertex scales for animation
 let edges = [];
 let faces = [];
 let mesh = null;
@@ -183,42 +184,61 @@ function extractData() {
 }
 
 function showVertices() {
-    if (vertices.length === 0) {
-        // Create vertices
-        verticesData.forEach((pos, index) => {
-            const geometry = new THREE.SphereGeometry(0.05, 5, 3);
-            const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
-            const sphere = new THREE.Mesh(geometry, material);
-            sphere.position.copy(pos);
-            sphere.scale.set(0, 0, 0);
-            scene.add(sphere);
-            vertices.push(sphere);
+    if (!vertices) {
+        // Create InstancedMesh for all vertices (one draw call)
+        const geometry = new THREE.SphereGeometry(0.05, 5, 3);
+        const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        vertices = new THREE.InstancedMesh(geometry, material, verticesData.length);
+        vertices.castShadow = true;
+        vertices.receiveShadow = true;
+        scene.add(vertices);
 
-            gsap.to(sphere.scale, {
-                x: 1,
-                y: 1,
-                z: 1,
+        // Initialize vertex scales and matrices
+        vertexScales = verticesData.map(() => 0);
+        const matrix = new THREE.Matrix4();
+        verticesData.forEach((pos, index) => {
+            matrix.compose(
+                pos,
+                new THREE.Quaternion(),
+                new THREE.Vector3(0, 0, 0)
+            );
+            vertices.setMatrixAt(index, matrix);
+        });
+
+        // Animate each vertex scale
+        verticesData.forEach((pos, index) => {
+            gsap.to(vertexScales, {
+                [index]: 1,
                 duration: 0.5,
                 delay: index * 0.05,
-                ease: "back.out(1.7)"
+                ease: "back.out(1.7)",
+                onUpdate: () => {
+                    const matrix = new THREE.Matrix4();
+                    matrix.compose(
+                        pos,
+                        new THREE.Quaternion(),
+                        new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                    );
+                    vertices.setMatrixAt(index, matrix);
+                    vertices.instanceMatrix.needsUpdate = true;
+                }
             });
         });
     } else {
         // Toggle visibility
-        const visible = !vertices[0].visible;
-        vertices.forEach(v => v.visible = visible);
+        vertices.visible = !vertices.visible;
     }
 }
 
 function connectEdges() {
-    if (vertices.length === 0) return;
+    if (!vertices) return;
 
     if (edges.length === 0) {
         // Create edges
         edgesData.forEach((edge, index) => {
             const points = [
-                vertices[edge[0]].position,
-                vertices[edge[1]].position
+                verticesData[edge[0]],
+                verticesData[edge[1]]
             ];
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
             const material = new THREE.LineBasicMaterial({
@@ -246,16 +266,16 @@ function connectEdges() {
 }
 
 function formFaces() {
-    if (vertices.length === 0) return;
+    if (!vertices) return;
 
     if (faces.length === 0) {
         // Create faces
         facesData.forEach((face, index) => {
             const geometry = new THREE.BufferGeometry();
             const positions = new Float32Array([
-                vertices[face[0]].position.x, vertices[face[0]].position.y, vertices[face[0]].position.z,
-                vertices[face[1]].position.x, vertices[face[1]].position.y, vertices[face[1]].position.z,
-                vertices[face[2]].position.x, vertices[face[2]].position.y, vertices[face[2]].position.z
+                verticesData[face[0]].x, verticesData[face[0]].y, verticesData[face[0]].z,
+                verticesData[face[1]].x, verticesData[face[1]].y, verticesData[face[1]].z,
+                verticesData[face[2]].x, verticesData[face[2]].y, verticesData[face[2]].z
             ]);
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.computeVertexNormals();
@@ -323,11 +343,14 @@ function resetScene() {
 }
 
 function clearObjects() {
-    vertices.forEach(obj => scene.remove(obj));
+    if (vertices) {
+        scene.remove(vertices);
+        vertices = null;
+        vertexScales = [];
+    }
     edges.forEach(obj => scene.remove(obj));
     faces.forEach(obj => scene.remove(obj));
     if (mesh) scene.remove(mesh);
-    vertices = [];
     edges = [];
     faces = [];
     mesh = null;
