@@ -168,6 +168,13 @@ function rotateLights(angle) {
         const z = pos.x * sin + pos.z * cos;
         light.position.set(x, pos.y, z);
     });
+    
+    // Update shader uniforms if assembled mesh exists
+    if (mesh && mesh.material && mesh.material.uniforms) {
+        mesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
+        mesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
+        mesh.material.uniforms.backLightPos.value.copy(backLight.position);
+    }
 }
 
 function updateVertexGeometry() {
@@ -715,7 +722,9 @@ function assembleMesh() {
             uniforms: {
                 baseColor: { value: new THREE.Color(0x808080) },
                 dissolve: { value: 0 },
-                lightPos: { value: new THREE.Vector3(2, 2, 1) },
+                keyLightPos: { value: keyLight.position.clone() },
+                fillLightPos: { value: fillLight.position.clone() },
+                backLightPos: { value: backLight.position.clone() },
                 hasTexture: { value: hasTexture ? 1.0 : 0.0 },
                 textureMap: { value: textureMap }
             },
@@ -734,7 +743,9 @@ function assembleMesh() {
             fragmentShader: `
                 uniform vec3 baseColor;
                 uniform float dissolve;
-                uniform vec3 lightPos;
+                uniform vec3 keyLightPos;
+                uniform vec3 fillLightPos;
+                uniform vec3 backLightPos;
                 uniform float hasTexture;
                 uniform sampler2D textureMap;
                 
@@ -760,10 +771,18 @@ function assembleMesh() {
                         albedo = texture2D(textureMap, vUv).rgb;
                     }
                     
-                    // Simple lighting
-                    vec3 light = normalize(lightPos - vPosition);
-                    float diff = max(dot(vNormal, light), 0.2);
-                    vec3 color = albedo * diff;
+                    // Three-point lighting (matches scene setup)
+                    vec3 keyLight = normalize(keyLightPos);
+                    vec3 fillLight = normalize(fillLightPos);
+                    vec3 backLight = normalize(backLightPos);
+                    
+                    float keyDiff = max(dot(vNormal, keyLight), 0.0) * 1.0;     // Main light
+                    float fillDiff = max(dot(vNormal, fillLight), 0.0) * 0.3;   // Fill light (dimmer)
+                    float backDiff = max(dot(vNormal, backLight), 0.0) * 0.6;   // Back light
+                    float ambient = 0.2;  // Ambient light
+                    
+                    float totalLight = keyDiff + fillDiff + backDiff + ambient;
+                    vec3 color = albedo * totalLight;
                     
                     gl_FragColor = vec4(color, 1.0);
                 }
