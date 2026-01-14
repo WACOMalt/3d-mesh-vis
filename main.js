@@ -24,10 +24,17 @@ const createSkyMesh = () => {
     precision highp float;
     varying vec3 vWorldPosition;
     uniform vec3 sunPosition;
+    uniform float showHorizonCutoff;
     
     void main() {
       vec3 direction = normalize(vWorldPosition - cameraPosition);
       vec3 up = vec3(0.0, 1.0, 0.0);
+      
+      // Hard cut at horizon - anything below is dark grey (only when enabled)
+      if (direction.y < 0.0 && showHorizonCutoff > 0.5) {
+        gl_FragColor = vec4(0.2, 0.2, 0.2, 1.0); // #333333
+        return;
+      }
       
       // Simple sky based on sun position
       float sunDot = dot(direction, normalize(sunPosition));
@@ -56,6 +63,7 @@ const createSkyMesh = () => {
     depthWrite: false,
     uniforms: {
       sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
+      showHorizonCutoff: { value: 1.0 }
     },
     vertexShader: vertexShader,
     fragmentShader: fragmentShader
@@ -77,8 +85,11 @@ function updateSunPosition() {
   const theta = THREE.MathUtils.degToRad(sunAzimuth);
   sunVector.setFromSphericalCoords(1, phi, theta);
   sky.material.uniforms.sunPosition.value.copy(sunVector);
+  
+  // Also update keyLight position to match sun (scaled to reasonable distance)
+  const sunDistance = 10;
+  keyLight.position.copy(sunVector).multiplyScalar(sunDistance);
 }
-updateSunPosition();
 
 // Sky follows camera
 scene.add(sky);
@@ -88,6 +99,7 @@ camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x333333);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -107,11 +119,14 @@ scene.add(hemisphereLight);
 const lightsGroup = new THREE.Group();
 scene.add(lightsGroup);
 
-// Key light (main) - front right
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+// Key light (main) - tracks the sun position
+const keyLight = new THREE.DirectionalLight(0xffffff, 6.0);
 keyLight.position.set(4, 5, 3);
 keyLight.castShadow = false;
-lightsGroup.add(keyLight);
+scene.add(keyLight);
+
+// Initialize sun position to match sky and keyLight
+updateSunPosition();
 
 // Rim light - back left
 const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -124,18 +139,6 @@ lightsGroup.add(rimLight);
 const gridHelper = new THREE.GridHelper(10, 10);
 gridHelper.position.y = -1;
 scene.add(gridHelper);
-
-// Semi-transparent black plane under grid
-const planeGeometry = new THREE.PlaneGeometry(10, 10);
-const planeMaterial = new THREE.MeshBasicMaterial({ 
-  color: 0x000000, 
-  transparent: true, 
-  opacity: 0.5 
-});
-const floorPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-floorPlane.position.y = -1;
-floorPlane.rotation.x = -Math.PI / 2;
-scene.add(floorPlane);
 
 // Axes helper (navigation)
 const axesHelper = new THREE.AxesHelper(1);
@@ -225,7 +228,8 @@ const faceShaderMaterial = new THREE.ShaderMaterial({
         
         void main() {
             vVisibility = visibility;
-            vNormal = normalize(normalMatrix * normal);
+            // Transform normal to world space
+            vNormal = normalize(mat3(modelMatrix) * normal);
             vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
@@ -293,9 +297,8 @@ let lightingRotation = 0;
 let vertexSize = 0.05;
 let animationMaxTime = 2;
 let floorHelpersVisible = true;
-const lights = [keyLight, rimLight];
+const lights = [rimLight];
 const lightPositions = [
-    { x: 4, y: 5, z: 3 },
     { x: -4, y: 5, z: -3 }
 ];
 
@@ -363,7 +366,7 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
     if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            const objLoader = new THREE.OBJLoader();
+            const objLoader = new OBJLoader();
             try {
                 const object = objLoader.parse(event.target.result);
                 if (object.children.length > 0) {
@@ -435,6 +438,19 @@ document.getElementById('toggle-floor-helpers').addEventListener('click', () => 
     floorAxesHelper.visible = floorHelpersVisible;
     const button = document.getElementById('toggle-floor-helpers');
     button.style.background = floorHelpersVisible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+});
+
+document.getElementById('toggle-background').addEventListener('click', () => {
+    sky.visible = !sky.visible;
+    const button = document.getElementById('toggle-background');
+    button.style.background = sky.visible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+});
+
+document.getElementById('toggle-skybox-bottom').addEventListener('click', () => {
+    const currentValue = sky.material.uniforms.showHorizonCutoff.value;
+    sky.material.uniforms.showHorizonCutoff.value = currentValue > 0.5 ? 0.0 : 1.0;
+    const button = document.getElementById('toggle-skybox-bottom');
+    button.style.background = sky.material.uniforms.showHorizonCutoff.value > 0.5 ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
 });
 
 // ===== Core Functions =====
@@ -904,65 +920,33 @@ function assembleMesh() {
         // Custom shader material with dither dissolve effect and PBR
         const material = new THREE.ShaderMaterial({
             uniforms: {
-                baseColor: { value: baseColor },
                 dissolve: { value: 0 },
-                roughness: { value: 0.2 },
-                metalness: { value: 0.0 },
                 keyLightPos: { value: keyLight.position.clone() },
                 rimLightPos: { value: rimLight.position.clone() }
             },
             vertexShader: `
                 varying vec3 vNormal;
                 varying vec3 vWorldPosition;
-                varying vec2 vUv;
                 
                 void main() {
-                    vNormal = normalize(normalMatrix * normal);
+                    // Transform normal to world space
+                    vNormal = normalize(mat3(modelMatrix) * normal);
                     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
                     vWorldPosition = worldPosition.xyz;
-                    vUv = uv;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
             fragmentShader: `
-                uniform vec3 baseColor;
                 uniform float dissolve;
-                uniform float roughness;
-                uniform float metalness;
                 uniform vec3 keyLightPos;
                 uniform vec3 rimLightPos;
                 
                 varying vec3 vNormal;
                 varying vec3 vWorldPosition;
-                varying vec2 vUv;
-                
-                const float PI = 3.14159265359;
                 
                 // Simple hash function for dither pattern
                 float hash(vec3 p) {
                     return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
-                }
-                
-                // GGX distribution
-                float GGX(vec3 N, vec3 H, float roughness) {
-                    float a = roughness * roughness;
-                    float a2 = a * a;
-                    float NdotH = max(dot(N, H), 0.0);
-                    float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
-                    return a2 / (PI * denom * denom);
-                }
-                
-                // Geometric shadowing (Schlick approximation)
-                float GeometrySmith(float NdotV, float NdotL, float roughness) {
-                    float r = (roughness + 1.0) * (roughness + 1.0) * 0.125;
-                    float ggx1 = NdotV / (NdotV * (1.0 - r) + r);
-                    float ggx2 = NdotL / (NdotL * (1.0 - r) + r);
-                    return ggx1 * ggx2;
-                }
-                
-                // Fresnel (Schlick approximation)
-                vec3 fresnelSchlick(float cosTheta, vec3 F0) {
-                    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
                 }
                 
                 void main() {
@@ -971,60 +955,19 @@ function assembleMesh() {
                     if (dither > dissolve) discard;
                     
                     vec3 N = normalize(vNormal);
-                    vec3 V = normalize(cameraPosition - vWorldPosition);
                     
-                    // Prepare light directions (relative positions)
-                    vec3 lightDir1 = normalize(keyLightPos - vWorldPosition);
-                    vec3 lightDir2 = normalize(rimLightPos - vWorldPosition);
+                    // Normalized light directions
+                    vec3 keyLight = normalize(keyLightPos - vWorldPosition);
+                    vec3 rimLight = normalize(rimLightPos - vWorldPosition);
                     
-                    // Light intensities
-                    float intensity1 = 2.0;
-                    float intensity2 = 1.5;
+                    // Lambert diffuse
+                    float keyDiff = max(dot(N, keyLight), 0.0) * 2.0;
+                    float rimDiff = max(dot(N, rimLight), 0.0) * 1.5;
                     
-                    // Fresnel base (0.04 for non-metallic)
-                    vec3 F0 = mix(vec3(0.04), baseColor, metalness);
+                    float totalDiffuse = keyDiff + rimDiff;
+                    vec3 diffuseColor = vec3(0.5) * totalDiffuse;
                     
-                    vec3 Lo = vec3(0.0);
-                    
-                    // Light 1 (Key light)
-                    {
-                        vec3 L = lightDir1;
-                        vec3 H = normalize(V + L);
-                        float distance = length(keyLightPos - vWorldPosition);
-                        float attenuation = 1.0 / (distance * distance + 1.0);
-                        vec3 radiance = vec3(1.0) * intensity1 * attenuation;
-                        
-                        float NDF = GGX(N, H, roughness);
-                        float G = GeometrySmith(max(dot(N, V), 0.0), max(dot(N, L), 0.0), roughness);
-                        vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
-                        
-                        vec3 kS = F;
-                        vec3 kD = (vec3(1.0) - kS) * (1.0 - metalness);
-                        
-                        vec3 specular = NDF * G * F / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
-                        Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
-                    }
-                    
-                    // Light 2 (Rim light)
-                    {
-                        vec3 L = lightDir2;
-                        vec3 H = normalize(V + L);
-                        float distance = length(rimLightPos - vWorldPosition);
-                        float attenuation = 1.0 / (distance * distance + 1.0);
-                        vec3 radiance = vec3(1.0) * intensity2 * attenuation;
-                        
-                        float NDF = GGX(N, H, roughness);
-                        float G = GeometrySmith(max(dot(N, V), 0.0), max(dot(N, L), 0.0), roughness);
-                        vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
-                        
-                        vec3 kS = F;
-                        vec3 kD = (vec3(1.0) - kS) * (1.0 - metalness);
-                        
-                        vec3 specular = NDF * G * F / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
-                        Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
-                    }
-                    
-                    vec3 finalColor = Lo;
+                    vec3 finalColor = diffuseColor;
                     
                     gl_FragColor = vec4(finalColor, 1.0);
                 }
