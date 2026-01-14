@@ -580,9 +580,10 @@ function autoScaleAndPositionModel(geometry) {
      * Automatically scales and positions a model based on its bounding box:
      * 1. If longest dimension > 10 units: scale down to 10 units
      * 2. If longest dimension < 5 units: scale up to 5 units
-     * 3. Apply vertical offset to place bottom of bounding box on floor (Y=0)
+     * 3. Apply vertical offset to place bottom of bounding box on floor (Y=-1)
+     * Returns the center of the final bounding box for camera targeting
      */
-    if (!geometry) return;
+    if (!geometry) return new THREE.Vector3(0, 0, 0);
     
     // Calculate bounding box
     geometry.computeBoundingBox();
@@ -640,9 +641,14 @@ function autoScaleAndPositionModel(geometry) {
         posAttr.needsUpdate = true;
     }
     
-    // Verify final position
+    // Verify final position and calculate center
     geometry.computeBoundingBox();
-    console.log('Final bounding box min Y:', geometry.boundingBox.min.y, '(should be -1 for floor)');
+    const finalBbox = geometry.boundingBox;
+    const bboxCenter = finalBbox.getCenter(new THREE.Vector3());
+    console.log('Final bounding box min Y:', finalBbox.min.y, '(should be -1 for floor)');
+    console.log('Bounding box center:', bboxCenter.clone());
+    
+    return bboxCenter;
 }
 
 function updateGeometry() {
@@ -652,7 +658,10 @@ function updateGeometry() {
         currentGeometry = shapeGeometries[currentShape]();
     }
     // Apply auto-scaling and floor positioning to all geometries
-    autoScaleAndPositionModel(currentGeometry);
+    const bboxCenter = autoScaleAndPositionModel(currentGeometry);
+    // Update camera target to center on the model
+    controls.target.copy(bboxCenter);
+    controls.update();
     extractData();
     updateInfo();
 }
