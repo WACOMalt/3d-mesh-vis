@@ -299,11 +299,10 @@ let lightingRotation = 0;
 let vertexSize = 0.05;
 let animationMaxTime = 2;
 let floorHelpersVisible = true;
-const lights = [keyLight, fillLight, backLight];
+const lights = [keyLight, rimLight];
 const lightPositions = [
-    { x: 2, y: 2, z: 1 },
-    { x: -2, y: 1, z: 1 },
-    { x: 0, y: -1, z: -2 }
+    { x: 4, y: 5, z: 3 },
+    { x: -4, y: 5, z: -3 }
 ];
 
 function rotateLights(angle) {
