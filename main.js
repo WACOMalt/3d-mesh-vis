@@ -653,15 +653,33 @@ function autoScaleAndPositionModel(geometry) {
     // Calculate required camera distance to view entire model
     // Use the largest dimension of the bounding box
     const maxFinalDimension = Math.max(finalBboxSize.x, finalBboxSize.y, finalBboxSize.z);
-    // Camera FOV is 75 degrees
-    const cameraFOV = 75;
-    const fovRad = THREE.MathUtils.degToRad(cameraFOV);
+    const cameraVFOV = 75; // vertical field of view in degrees
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    
+    // Determine which FOV to use based on window aspect ratio
+    let effectiveFOV;
+    if (aspectRatio > 1) {
+        // Landscape (wider than tall) - use vertical FOV
+        effectiveFOV = cameraVFOV;
+    } else if (aspectRatio < 1) {
+        // Portrait (taller than wide) - convert to horizontal FOV
+        const vFOVRad = THREE.MathUtils.degToRad(cameraVFOV);
+        const hFOVRad = 2 * Math.atan(Math.tan(vFOVRad / 2) * aspectRatio);
+        effectiveFOV = THREE.MathUtils.radToDeg(hFOVRad);
+    } else {
+        // Square - use horizontal FOV
+        const vFOVRad = THREE.MathUtils.degToRad(cameraVFOV);
+        const hFOVRad = 2 * Math.atan(Math.tan(vFOVRad / 2) * aspectRatio);
+        effectiveFOV = THREE.MathUtils.radToDeg(hFOVRad);
+    }
+    
+    const fovRad = THREE.MathUtils.degToRad(effectiveFOV);
     // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
     const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
     // Add some buffer (1.3x) to ensure comfortable viewing
     const cameraDistance = requiredDistance * 1.3;
     
-    console.log('Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
+    console.log('Aspect ratio:', aspectRatio, 'Effective FOV:', effectiveFOV, 'Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
     
     return { center: bboxCenter, distance: cameraDistance };
 }
