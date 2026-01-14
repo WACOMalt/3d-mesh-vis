@@ -39,6 +39,10 @@
             margin-bottom: 15px;
         }
 
+        .control-group.center-content {
+            text-align: center;
+        }
+
         label {
             display: block;
             margin-bottom: 8px;
@@ -256,6 +260,10 @@
             </label>
             <input type="range" id="animation-max-time" min="0" max="10" value="2" step="any">
         </div>
+
+        <div class="control-group center-content">
+            <button id="toggle-floor-helpers">Toggle Grid</button>
+        </div>
     </div>
 
     <!-- Three.js (local) - UMD build -->
@@ -266,6 +274,9 @@
     
     <!-- OBJLoader (local) -->
     <script src="OBJLoader.js"></script>
+    
+    <!-- RGBELoader (local) -->
+    <script src="RGBELoader.js"></script>
     
     <!-- GSAP (local) -->
     <script src="gsap.min.js"></script>

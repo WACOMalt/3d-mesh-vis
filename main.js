@@ -3,67 +3,30 @@
 
 // ===== Scene Setup =====
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111);
+scene.background = new THREE.Color(0x1a1a1a);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-// ===== Environment Map Setup =====
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-pmremGenerator.compileEquirectangularShader();
-
-// Create a simple gradient environment texture
-const envScene = new THREE.Scene();
-const envCamera = new THREE.PerspectiveCamera();
-const envGeometry = new THREE.SphereGeometry(500, 60, 40);
-const envMaterial = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    vertexShader: `
-        varying vec3 vWorldPosition;
-        void main() {
-            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-            vWorldPosition = worldPosition.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
-    fragmentShader: `
-        varying vec3 vWorldPosition;
-        void main() {
-            vec3 direction = normalize(vWorldPosition);
-            float gradient = direction.y * 0.5 + 0.5;
-            vec3 topColor = vec3(0.4, 0.45, 0.5);
-            vec3 bottomColor = vec3(0.15, 0.15, 0.2);
-            vec3 color = mix(bottomColor, topColor, gradient);
-            gl_FragColor = vec4(color, 1.0);
-        }
-    `
-});
-const envMesh = new THREE.Mesh(envGeometry, envMaterial);
-envScene.add(envMesh);
-const envRenderTarget = pmremGenerator.fromScene(envScene);
-scene.environment = envRenderTarget.texture;
-envGeometry.dispose();
-envMaterial.dispose();
-pmremGenerator.dispose();
 
 // ===== Lighting Setup =====
 // Key light (main)
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
-keyLight.position.set(2, 2, 1);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+keyLight.position.set(8, 8, 1);
 scene.add(keyLight);
 
 // Fill light (shadow fill)
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.1);
-fillLight.position.set(-2, 1, 1);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+fillLight.position.set(-8, 4, 1);
 scene.add(fillLight);
 
 // Back light (rim)
-const backLight = new THREE.DirectionalLight(0xffffff, 0.6);
-backLight.position.set(0, -1, -2);
+const backLight = new THREE.DirectionalLight(0xffffff, 1.0);
+backLight.position.set(0, -4, -8);
 scene.add(backLight);
 
 // ===== Helpers =====
@@ -116,6 +79,7 @@ let vertexScales = [];  // Track individual vertex scales for animation
 let edgesMesh = null;  // Merged edges mesh
 let edgeVisibility = [];  // Track individual edge visibility for animation
 let facesMesh = null;  // Merged faces mesh
+let facesInnerMesh = null; // Back-side faces for inside color
 let faceVisibility = [];  // Track individual face visibility for animation
 let mesh = null;
 
@@ -144,33 +108,77 @@ const edgeShaderMaterial = new THREE.ShaderMaterial({
 
 // ===== Custom Shader Material for Faces =====
 const faceShaderMaterial = new THREE.ShaderMaterial({
-    uniforms: {},
+    uniforms: {
+        keyLightPos: { value: new THREE.Vector3(2, 2, 1) },
+        fillLightPos: { value: new THREE.Vector3(-2, 1, 1) },
+        backLightPos: { value: new THREE.Vector3(0, -1, -2) },
+        outsideColor: { value: new THREE.Color(0x0044ff) },
+        insideColor: { value: new THREE.Color(0xff6600) },
+        inside: { value: 0.0 }
+    },
     vertexShader: `
         attribute float visibility;
         varying float vVisibility;
         varying vec3 vNormal;
+        varying vec3 vWorldPosition;
         
         void main() {
             vVisibility = visibility;
             vNormal = normalize(normalMatrix * normal);
+            vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
     `,
     fragmentShader: `
+        uniform vec3 keyLightPos;
+        uniform vec3 fillLightPos;
+        uniform vec3 backLightPos;
+        uniform vec3 outsideColor;
+        uniform vec3 insideColor;
+        uniform float inside;
+        
         varying float vVisibility;
         varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+
+        // Hash for dithered (opaque) visibility reveal
+        float hash(vec3 p) {
+            return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+        }
         
         void main() {
-            vec3 color = vec3(0.0, 0.0, 1.0);
-            vec3 light = normalize(vec3(1.0, 1.0, 1.0));
-            float brightness = max(dot(vNormal, light), 0.3);
-            gl_FragColor = vec4(color * brightness, 0.7 * vVisibility);
+            // Opaque reveal: discard pixels based on animated visibility
+            float dither = hash(vWorldPosition * 10.0);
+            if (dither > vVisibility) discard;
+
+            // Different colors for outside vs inside (do NOT rely on gl_FrontFacing;
+            // Three.js may flip winding for BackSide rendering)
+            vec3 baseColor = mix(outsideColor, insideColor, inside);
+            vec3 N = normalize(mix(vNormal, -vNormal, inside));
+            
+            // Normalized light directions
+            vec3 keyLight = normalize(keyLightPos - vWorldPosition);
+            vec3 fillLight = normalize(fillLightPos - vWorldPosition);
+            vec3 backLight = normalize(backLightPos - vWorldPosition);
+            
+            // Lambert diffuse
+            float keyDiff = max(dot(N, keyLight), 0.0) * 1.0;
+            float fillDiff = max(dot(N, fillLight), 0.0) * 0.3;
+            float backDiff = max(dot(N, backLight), 0.0) * 0.6;
+            
+            float totalDiffuse = keyDiff + fillDiff + backDiff;
+            vec3 diffuseColor = baseColor * totalDiffuse;
+
+            vec3 ambient = baseColor * 0.12;
+            vec3 finalColor = ambient + diffuseColor;
+
+            gl_FragColor = vec4(finalColor, 1.0);
         }
     `,
-    transparent: true,
+    transparent: false,
     side: THREE.DoubleSide,
     depthTest: true,
-    depthWrite: false,
+    depthWrite: true,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1
@@ -188,6 +196,7 @@ const shapeGeometries = {
 let lightingRotation = 0;
 let vertexSize = 0.05;
 let animationMaxTime = 2;
+let floorHelpersVisible = true;
 const lights = [keyLight, fillLight, backLight];
 const lightPositions = [
     { x: 2, y: 2, z: 1 },
@@ -212,6 +221,20 @@ function rotateLights(angle) {
         mesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
         mesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
         mesh.material.uniforms.backLightPos.value.copy(backLight.position);
+    }
+    
+    // Update shader uniforms if faces mesh exists
+    if (facesMesh && facesMesh.material && facesMesh.material.uniforms) {
+        facesMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
+        facesMesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
+        facesMesh.material.uniforms.backLightPos.value.copy(backLight.position);
+    }
+
+    // Update shader uniforms if inside faces mesh exists
+    if (facesInnerMesh && facesInnerMesh.material && facesInnerMesh.material.uniforms) {
+        facesInnerMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
+        facesInnerMesh.material.uniforms.fillLightPos.value.copy(fillLight.position);
+        facesInnerMesh.material.uniforms.backLightPos.value.copy(backLight.position);
     }
 }
 
@@ -312,6 +335,14 @@ console.log('vertex-size listener attached');
 document.getElementById('animation-max-time').addEventListener('input', (e) => {
     animationMaxTime = parseFloat(e.target.value);
     document.getElementById('animation-max-time-value').textContent = animationMaxTime.toFixed(1) + 's';
+});
+
+document.getElementById('toggle-floor-helpers').addEventListener('click', () => {
+    floorHelpersVisible = !floorHelpersVisible;
+    gridHelper.visible = floorHelpersVisible;
+    floorAxesHelper.visible = floorHelpersVisible;
+    const button = document.getElementById('toggle-floor-helpers');
+    button.style.background = floorHelpersVisible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
 });
 
 // ===== Core Functions =====
@@ -641,12 +672,33 @@ function formFaces() {
         geometry.setAttribute('visibility', new THREE.BufferAttribute(new Float32Array(visibilityArray), 1));
         geometry.computeVertexNormals();
 
-        // Clone the material for this instance
-        const material = faceShaderMaterial.clone();
-        facesMesh = new THREE.Mesh(geometry, material);
+        // Outside pass: front faces only, writes depth (occludes inside)
+        const outsideMaterial = faceShaderMaterial.clone();
+        outsideMaterial.side = THREE.FrontSide;
+        outsideMaterial.uniforms.inside.value = 0.0;
+        outsideMaterial.uniforms.keyLightPos.value.copy(keyLight.position);
+        outsideMaterial.uniforms.fillLightPos.value.copy(fillLight.position);
+        outsideMaterial.uniforms.backLightPos.value.copy(backLight.position);
+        facesMesh = new THREE.Mesh(geometry, outsideMaterial);
         facesMesh.renderOrder = 1; // draw before assembled mesh
         facesMesh.visible = false;
         scene.add(facesMesh);
+
+        // Inside pass: back faces only, draws after outside
+        const insideMaterial = faceShaderMaterial.clone();
+        insideMaterial.side = THREE.BackSide;
+        insideMaterial.uniforms.inside.value = 1.0;
+        // Push inside slightly back in depth to avoid silhouette leakage
+        insideMaterial.polygonOffset = true;
+        insideMaterial.polygonOffsetFactor = 2;
+        insideMaterial.polygonOffsetUnits = 2;
+        insideMaterial.uniforms.keyLightPos.value.copy(keyLight.position);
+        insideMaterial.uniforms.fillLightPos.value.copy(fillLight.position);
+        insideMaterial.uniforms.backLightPos.value.copy(backLight.position);
+        facesInnerMesh = new THREE.Mesh(geometry, insideMaterial);
+        facesInnerMesh.renderOrder = 1.05;
+        facesInnerMesh.visible = false;
+        scene.add(facesInnerMesh);
 
         // Initialize visibility tracking
         faceVisibility = facesData.map(() => 0);
@@ -674,6 +726,7 @@ function formFaces() {
         });
         geometry.attributes.visibility.needsUpdate = true;
         facesMesh.visible = true;
+        if (facesInnerMesh) facesInnerMesh.visible = true;
 
         if (MAX_TIME === 0) {
             facesData.forEach((face, faceIndex) => {
@@ -706,6 +759,7 @@ function formFaces() {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             facesMesh.visible = false;
+            if (facesInnerMesh) facesInnerMesh.visible = false;
             document.getElementById('form-faces').textContent = 'Show Faces';
         } else {
             const reverseCount = facesData.length - 1;
@@ -726,6 +780,7 @@ function formFaces() {
                     onComplete: () => {
                         if (faceIndex === 0) {
                             facesMesh.visible = false;
+                            if (facesInnerMesh) facesInnerMesh.visible = false;
                             document.getElementById('form-faces').textContent = 'Show Faces';
                         }
                     }
@@ -750,40 +805,32 @@ function assembleMesh() {
         // Create complete mesh with dither dissolve shader
         const geometry = currentGeometry.clone();
         
-        // Extract texture from original material if available
-        let hasTexture = false;
-        let textureMap = null;
-        if (currentMaterial && currentMaterial.map) {
-            hasTexture = true;
-            textureMap = currentMaterial.map;
+        // Get base color from original material or use default
+        let baseColor = new THREE.Color(0xffffff);
+        if (currentMaterial && currentMaterial.color) {
+            baseColor.copy(currentMaterial.color);
         }
         
-        // Custom shader material with dither dissolve effect and texture support
+        // Custom shader material with dither dissolve effect and PBR
         const material = new THREE.ShaderMaterial({
             uniforms: {
-                baseColor: { value: new THREE.Color(0x808080) },
+                baseColor: { value: baseColor },
                 dissolve: { value: 0 },
+                roughness: { value: 0.2 },
+                metalness: { value: 0.0 },
                 keyLightPos: { value: keyLight.position.clone() },
                 fillLightPos: { value: fillLight.position.clone() },
-                backLightPos: { value: backLight.position.clone() },
-                hasTexture: { value: hasTexture ? 1.0 : 0.0 },
-                textureMap: { value: textureMap },
-                envMap: { value: scene.environment },
-                envMapIntensity: { value: 0.3 }
+                backLightPos: { value: backLight.position.clone() }
             },
             vertexShader: `
                 varying vec3 vNormal;
-                varying vec3 vPosition;
+                varying vec3 vWorldPosition;
                 varying vec2 vUv;
-                varying vec3 vWorldNormal;
-                varying vec3 vViewPosition;
                 
                 void main() {
                     vNormal = normalize(normalMatrix * normal);
-                    vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
                     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                    vPosition = worldPosition.xyz;
-                    vViewPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+                    vWorldPosition = worldPosition.xyz;
                     vUv = uv;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
@@ -791,64 +838,131 @@ function assembleMesh() {
             fragmentShader: `
                 uniform vec3 baseColor;
                 uniform float dissolve;
+                uniform float roughness;
+                uniform float metalness;
                 uniform vec3 keyLightPos;
                 uniform vec3 fillLightPos;
                 uniform vec3 backLightPos;
-                uniform float hasTexture;
-                uniform sampler2D textureMap;
-                uniform samplerCube envMap;
-                uniform float envMapIntensity;
                 
                 varying vec3 vNormal;
-                varying vec3 vPosition;
+                varying vec3 vWorldPosition;
                 varying vec2 vUv;
-                varying vec3 vWorldNormal;
-                varying vec3 vViewPosition;
+                
+                const float PI = 3.14159265359;
                 
                 // Simple hash function for dither pattern
                 float hash(vec3 p) {
                     return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
                 }
                 
+                // GGX distribution
+                float GGX(vec3 N, vec3 H, float roughness) {
+                    float a = roughness * roughness;
+                    float a2 = a * a;
+                    float NdotH = max(dot(N, H), 0.0);
+                    float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
+                    return a2 / (PI * denom * denom);
+                }
+                
+                // Geometric shadowing (Schlick approximation)
+                float GeometrySmith(float NdotV, float NdotL, float roughness) {
+                    float r = (roughness + 1.0) * (roughness + 1.0) * 0.125;
+                    float ggx1 = NdotV / (NdotV * (1.0 - r) + r);
+                    float ggx2 = NdotL / (NdotL * (1.0 - r) + r);
+                    return ggx1 * ggx2;
+                }
+                
+                // Fresnel (Schlick approximation)
+                vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+                    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+                }
+                
                 void main() {
-                    // Create dither pattern using position and dissolve value
-                    float dither = hash(vPosition * 10.0 + vec3(dissolve * 5.0));
-                    
-                    // Use dissolve threshold to progressively reveal mesh
+                    // Dither dissolve
+                    float dither = hash(vWorldPosition * 10.0 + vec3(dissolve * 5.0));
                     if (dither > dissolve) discard;
                     
-                    // Get base color from texture or uniform
-                    vec3 albedo = baseColor;
-                    if (hasTexture > 0.5) {
-                        albedo = texture2D(textureMap, vUv).rgb;
+                    vec3 N = normalize(vNormal);
+                    vec3 V = normalize(cameraPosition - vWorldPosition);
+                    
+                    // Prepare light directions (relative positions)
+                    vec3 lightDir1 = normalize(keyLightPos - vWorldPosition);
+                    vec3 lightDir2 = normalize(fillLightPos - vWorldPosition);
+                    vec3 lightDir3 = normalize(backLightPos - vWorldPosition);
+                    
+                    // Light intensities
+                    float intensity1 = 2.0;
+                    float intensity2 = 0.6;
+                    float intensity3 = 1.2;
+                    
+                    // Fresnel base (0.04 for non-metallic)
+                    vec3 F0 = mix(vec3(0.04), baseColor, metalness);
+                    
+                    vec3 Lo = vec3(0.0);
+                    
+                    // Light 1 (Key light)
+                    {
+                        vec3 L = lightDir1;
+                        vec3 H = normalize(V + L);
+                        float distance = length(keyLightPos - vWorldPosition);
+                        float attenuation = 1.0 / (distance * distance + 1.0);
+                        vec3 radiance = vec3(1.0) * intensity1 * attenuation;
+                        
+                        float NDF = GGX(N, H, roughness);
+                        float G = GeometrySmith(max(dot(N, V), 0.0), max(dot(N, L), 0.0), roughness);
+                        vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
+                        
+                        vec3 kS = F;
+                        vec3 kD = (vec3(1.0) - kS) * (1.0 - metalness);
+                        
+                        vec3 specular = NDF * G * F / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
+                        Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
                     }
                     
-                    // Three-point lighting (matches scene setup)
-                    vec3 keyLight = normalize(keyLightPos);
-                    vec3 fillLight = normalize(fillLightPos);
-                    vec3 backLight = normalize(backLightPos);
+                    // Light 2 (Fill light)
+                    {
+                        vec3 L = lightDir2;
+                        vec3 H = normalize(V + L);
+                        float distance = length(fillLightPos - vWorldPosition);
+                        float attenuation = 1.0 / (distance * distance + 1.0);
+                        vec3 radiance = vec3(1.0) * intensity2 * attenuation;
+                        
+                        float NDF = GGX(N, H, roughness);
+                        float G = GeometrySmith(max(dot(N, V), 0.0), max(dot(N, L), 0.0), roughness);
+                        vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
+                        
+                        vec3 kS = F;
+                        vec3 kD = (vec3(1.0) - kS) * (1.0 - metalness);
+                        
+                        vec3 specular = NDF * G * F / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
+                        Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
+                    }
                     
-                    float keyDiff = max(dot(vNormal, keyLight), 0.0) * 1.0;     // Main light
-                    float fillDiff = max(dot(vNormal, fillLight), 0.0) * 0.3;   // Fill light (dimmer)
-                    float backDiff = max(dot(vNormal, backLight), 0.0) * 0.6;   // Back light
-                    float ambient = 0.2;  // Ambient light
+                    // Light 3 (Back light)
+                    {
+                        vec3 L = lightDir3;
+                        vec3 H = normalize(V + L);
+                        float distance = length(backLightPos - vWorldPosition);
+                        float attenuation = 1.0 / (distance * distance + 1.0);
+                        vec3 radiance = vec3(1.0) * intensity3 * attenuation;
+                        
+                        float NDF = GGX(N, H, roughness);
+                        float G = GeometrySmith(max(dot(N, V), 0.0), max(dot(N, L), 0.0), roughness);
+                        vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
+                        
+                        vec3 kS = F;
+                        vec3 kD = (vec3(1.0) - kS) * (1.0 - metalness);
+                        
+                        vec3 specular = NDF * G * F / (4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001);
+                        Lo += (kD * baseColor / PI + specular) * radiance * max(dot(N, L), 0.0);
+                    }
                     
-                    float totalLight = keyDiff + fillDiff + backDiff + ambient;
-                    vec3 diffuseColor = albedo * totalLight;
+                    // Simple ambient lighting
+                    vec3 ambient = baseColor * 0.15;
                     
-                    // Add environment reflections
-                    vec3 viewDir = normalize(vPosition - cameraPosition);
-                    vec3 reflectVec = reflect(viewDir, vWorldNormal);
-                    vec3 envColor = textureCube(envMap, reflectVec).rgb;
+                    vec3 finalColor = ambient + Lo;
                     
-                    // Blend diffuse and reflection based on surface properties
-                    float metalness = 0.15;
-                    float roughness = 0.7;
-                    float reflectivity = metalness * (1.0 - roughness);
-                    
-                    vec3 color = mix(diffuseColor, envColor, reflectivity * envMapIntensity);
-                    
-                    gl_FragColor = vec4(color, 1.0);
+                    gl_FragColor = vec4(finalColor, 1.0);
                 }
             `,
             side: THREE.FrontSide,
@@ -947,6 +1061,10 @@ function clearObjects() {
         facesMesh = null;
         faceVisibility = [];
         document.getElementById('form-faces').textContent = 'Show Faces';
+    }
+    if (facesInnerMesh) {
+        scene.remove(facesInnerMesh);
+        facesInnerMesh = null;
     }
     if (mesh) scene.remove(mesh);
     mesh = null;
