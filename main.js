@@ -229,12 +229,18 @@ function showVertices() {
             vertices.setMatrixAt(index, matrix);
         });
 
+        // Calculate proportional delays to fit within 5 seconds total
+        const ANIMATION_DURATION = 0.5;
+        const MAX_TIME = 5;
+        const itemCount = verticesData.length;
+        const delayPerItem = (MAX_TIME - ANIMATION_DURATION) / Math.max(1, itemCount - 1);
+
         // Animate each vertex scale
         verticesData.forEach((pos, index) => {
             gsap.to(vertexScales, {
                 [index]: 1,
-                duration: 0.5,
-                delay: index * 0.05,
+                duration: ANIMATION_DURATION,
+                delay: index * delayPerItem,
                 ease: "back.out(1.7)",
                 onUpdate: () => {
                     const matrix = new THREE.Matrix4();
@@ -286,12 +292,18 @@ function connectEdges() {
         // Initialize visibility tracking
         edgeVisibility = edgesData.map(() => 0);
 
+        // Calculate proportional delays to fit within 5 seconds total
+        const ANIMATION_DURATION = 0.3;
+        const MAX_TIME = 5;
+        const itemCount = edgesData.length;
+        const delayPerItem = (MAX_TIME - ANIMATION_DURATION) / Math.max(1, itemCount - 1);
+
         // Animate each edge to appear
         edgesData.forEach((edge, edgeIndex) => {
             gsap.to(edgeVisibility, {
                 [edgeIndex]: 1,
-                duration: 0.3,
-                delay: edgeIndex * 0.03,
+                duration: ANIMATION_DURATION,
+                delay: edgeIndex * delayPerItem,
                 ease: "power2.out",
                 onUpdate: () => {
                     const visAttr = geometry.attributes.visibility.array;
@@ -333,10 +345,16 @@ function formFaces() {
             scene.add(triangle);
             faces.push(triangle);
 
+            // Calculate proportional delays to fit within 5 seconds total
+            const ANIMATION_DURATION = 0.4;
+            const MAX_TIME = 5;
+            const itemCount = facesData.length;
+            const delayPerItem = (MAX_TIME - ANIMATION_DURATION) / Math.max(1, itemCount - 1);
+
             gsap.to(material, {
                 opacity: 0.7,
-                duration: 0.4,
-                delay: index * 0.05,
+                duration: ANIMATION_DURATION,
+                delay: index * delayPerItem,
                 ease: "power2.out"
             });
         });
