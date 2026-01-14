@@ -592,6 +592,8 @@ function autoScaleAndPositionModel(geometry) {
     const bboxSize = bbox.getSize(new THREE.Vector3());
     const bboxMin = bbox.min;
     
+    console.log('Initial bounding box:', { min: bboxMin.clone(), size: bboxSize.clone() });
+    
     // Find longest dimension
     const maxDimension = Math.max(bboxSize.x, bboxSize.y, bboxSize.z);
     
@@ -602,6 +604,8 @@ function autoScaleAndPositionModel(geometry) {
     } else if (maxDimension < 5) {
         scaleFactor = 5 / maxDimension;
     }
+    
+    console.log('Scale factor:', scaleFactor, 'Max dimension:', maxDimension);
     
     // Apply scaling to all vertices
     if (scaleFactor !== 1.0) {
@@ -619,8 +623,13 @@ function autoScaleAndPositionModel(geometry) {
     const scaledBbox = geometry.boundingBox;
     const scaledBboxMin = scaledBbox.min;
     
-    // Calculate vertical offset to place bottom on floor
-    const verticalOffset = -scaledBboxMin.y;
+    console.log('After scaling, new min Y:', scaledBboxMin.y);
+    
+    // Calculate vertical offset to place bottom on floor (floor is at Y = -1)
+    const floorY = -1;
+    const verticalOffset = floorY - scaledBboxMin.y;
+    
+    console.log('Vertical offset to apply:', verticalOffset);
     
     // Apply vertical offset to all vertices
     if (Math.abs(verticalOffset) > 0.0001) {
@@ -632,6 +641,10 @@ function autoScaleAndPositionModel(geometry) {
         }
         posAttr.needsUpdate = true;
     }
+    
+    // Verify final position
+    geometry.computeBoundingBox();
+    console.log('Final bounding box min Y:', geometry.boundingBox.min.y, '(should be -1 for floor)');
 }
 
 function updateGeometry() {
