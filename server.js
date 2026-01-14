@@ -32,7 +32,16 @@ app.use(express.static(path.join(__dirname), {
   }
 }));
 
-// Fallback to index.html
+
+// Serve static files and index.html at /3d-mesh-vis for reverse proxy compatibility
+app.use('/3d-mesh-vis', express.static(path.join(__dirname)));
+
+// Fallback to index.html for /3d-mesh-vis SPA routes
+app.get('/3d-mesh-vis/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Keep root fallback for local dev
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
