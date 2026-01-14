@@ -117,6 +117,65 @@
             margin-bottom: 10px;
             font-size: 16px;
         }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(0, 123, 255, 0.8);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: rgba(0, 123, 255, 1);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(0, 123, 255, 0.8);
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            background: rgba(0, 123, 255, 1);
+        }
+
+        .slider-value {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 12px;
+            color: #aaa;
+            min-width: 40px;
+        }
+
+        #settings {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+            max-width: 300px;
+        }
     </style>
 </head>
 <body>
@@ -154,10 +213,10 @@
         <div class="control-group">
             <label>Visualization Steps:</label>
             <div class="button-group">
-                <button id="show-vertices">1. Show Vertices</button>
-                <button id="connect-edges">2. Connect Edges</button>
-                <button id="form-faces">3. Form Faces</button>
-                <button id="assemble-mesh">4. Assemble Mesh</button>
+                <button id="show-vertices">Show Vertices</button>
+                <button id="connect-edges">Show Edges</button>
+                <button id="form-faces">Show Faces</button>
+                <button id="assemble-mesh">Show Assembled Mesh</button>
                 <button id="reset">Reset</button>
             </div>
         </div>
@@ -169,6 +228,31 @@
         <div class="stat">Vertices: <strong id="vertex-count">0</strong></div>
         <div class="stat">Edges: <strong id="edge-count">0</strong></div>
         <div class="stat">Faces: <strong id="face-count">0</strong></div>
+    </div>
+
+    <div id="settings">
+        <h3>Settings</h3>
+        
+        <div class="control-group">
+            <label for="lighting-rotation">Lighting Rotation:
+                <span class="slider-value" id="lighting-rotation-value">0°</span>
+            </label>
+            <input type="range" id="lighting-rotation" min="0" max="360" value="0" step="1">
+        </div>
+
+        <div class="control-group">
+            <label for="vertex-size">Vertex Size:
+                <span class="slider-value" id="vertex-size-value">0.05</span>
+            </label>
+            <input type="range" id="vertex-size" min="0.01" max="0.1" value="0.05" step="0.01">
+        </div>
+
+        <div class="control-group">
+            <label for="animation-max-time">Animation Duration:
+                <span class="slider-value" id="animation-max-time-value">2s</span>
+            </label>
+            <input type="range" id="animation-max-time" min="0" max="10" value="2" step="0.5">
+        </div>
     </div>
 
     <!-- Three.js (local) - UMD build -->

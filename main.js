@@ -76,7 +76,8 @@ let vertices = null;  // InstancedMesh
 let vertexScales = [];  // Track individual vertex scales for animation
 let edgesMesh = null;  // Merged edges mesh
 let edgeVisibility = [];  // Track individual edge visibility for animation
-let faces = [];
+let facesMesh = null;  // Merged faces mesh
+let faceVisibility = [];  // Track individual face visibility for animation
 let mesh = null;
 
 // ===== Custom Shader Material for Edges =====
@@ -102,6 +103,40 @@ const edgeShaderMaterial = new THREE.ShaderMaterial({
     linewidth: 3
 });
 
+// ===== Custom Shader Material for Faces =====
+const faceShaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {},
+    vertexShader: `
+        attribute float visibility;
+        varying float vVisibility;
+        varying vec3 vNormal;
+        
+        void main() {
+            vVisibility = visibility;
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying float vVisibility;
+        varying vec3 vNormal;
+        
+        void main() {
+            vec3 color = vec3(0.0, 0.0, 1.0);
+            vec3 light = normalize(vec3(1.0, 1.0, 1.0));
+            float brightness = max(dot(vNormal, light), 0.3);
+            gl_FragColor = vec4(color * brightness, 0.7 * vVisibility);
+        }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthTest: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1
+});
+
 // ===== Shape Geometries =====
 const shapeGeometries = {
     cube: () => new THREE.BoxGeometry(2, 2, 2),
@@ -110,8 +145,44 @@ const shapeGeometries = {
     sphere: () => new THREE.SphereGeometry(1, 16, 16)
 };
 
+// ===== Lighting Configuration =====
+let lightingRotation = 0;
+let vertexSize = 0.05;
+let animationMaxTime = 2;
+const lights = [keyLight, fillLight, backLight];
+const lightPositions = [
+    { x: 2, y: 2, z: 1 },
+    { x: -2, y: 1, z: 1 },
+    { x: 0, y: -1, z: -2 }
+];
+
+function rotateLights(angle) {
+    const rad = (angle * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    lights.forEach((light, index) => {
+        const pos = lightPositions[index];
+        const x = pos.x * cos - pos.z * sin;
+        const z = pos.x * sin + pos.z * cos;
+        light.position.set(x, pos.y, z);
+    });
+}
+
+function updateVertexGeometry() {
+    if (vertices) {
+        // Kill any running animations before updating geometry
+        gsap.killTweensOf(vertexScales);
+        
+        // Update geometry with new size
+        vertices.geometry.dispose();
+        vertices.geometry = new THREE.SphereGeometry(vertexSize, 5, 3);
+    }
+}
+
 // ===== Initialization =====
 updateGeometry();
+rotateLights(lightingRotation);
 
 // ===== Event Listeners =====
 document.getElementById('shape-select').addEventListener('change', (e) => {
@@ -154,6 +225,24 @@ document.getElementById('connect-edges').addEventListener('click', connectEdges)
 document.getElementById('form-faces').addEventListener('click', formFaces);
 document.getElementById('assemble-mesh').addEventListener('click', assembleMesh);
 document.getElementById('reset').addEventListener('click', resetScene);
+
+// ===== Settings Panel Listeners =====
+document.getElementById('lighting-rotation').addEventListener('input', (e) => {
+    lightingRotation = parseFloat(e.target.value);
+    rotateLights(lightingRotation);
+    document.getElementById('lighting-rotation-value').textContent = lightingRotation + '°';
+});
+
+document.getElementById('vertex-size').addEventListener('input', (e) => {
+    vertexSize = parseFloat(e.target.value);
+    updateVertexGeometry();
+    document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
+});
+
+document.getElementById('animation-max-time').addEventListener('input', (e) => {
+    animationMaxTime = parseFloat(e.target.value);
+    document.getElementById('animation-max-time-value').textContent = animationMaxTime.toFixed(1) + 's';
+});
 
 // ===== Core Functions =====
 
@@ -210,11 +299,12 @@ function extractData() {
 function showVertices() {
     if (!vertices) {
         // Create InstancedMesh for all vertices (one draw call)
-        const geometry = new THREE.SphereGeometry(0.05, 5, 3);
+        const geometry = new THREE.SphereGeometry(vertexSize, 5, 3);
         const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
         vertices = new THREE.InstancedMesh(geometry, material, verticesData.length);
         vertices.castShadow = true;
         vertices.receiveShadow = true;
+        vertices.visible = false;
         scene.add(vertices);
 
         // Initialize vertex scales and matrices
@@ -228,40 +318,104 @@ function showVertices() {
             );
             vertices.setMatrixAt(index, matrix);
         });
+    }
 
-        // Calculate proportional delays to fit within 5 seconds total
-        const ANIMATION_DURATION = 0.5;
-        const MAX_TIME = 5;
-        const itemCount = verticesData.length;
-        const delayPerItem = (MAX_TIME - ANIMATION_DURATION) / Math.max(1, itemCount - 1);
+    // Kill any running animations
+    gsap.killTweensOf(vertexScales);
 
-        // Animate each vertex scale
+    // Calculate proportional delays
+    const ANIMATION_DURATION = 0.5;
+    const MAX_TIME = Math.max(0.5, animationMaxTime);
+    const itemCount = verticesData.length;
+    const delayPerItem = itemCount > 1 ? (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1) : 0;
+
+    if (!vertices.visible) {
+        // Show with animation
         verticesData.forEach((pos, index) => {
-            gsap.to(vertexScales, {
-                [index]: 1,
-                duration: ANIMATION_DURATION,
-                delay: index * delayPerItem,
-                ease: "back.out(1.7)",
-                onUpdate: () => {
-                    const matrix = new THREE.Matrix4();
-                    matrix.compose(
-                        pos,
-                        new THREE.Quaternion(),
-                        new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
-                    );
-                    vertices.setMatrixAt(index, matrix);
-                    vertices.instanceMatrix.needsUpdate = true;
-                }
-            });
+            vertexScales[index] = 0;
+            const matrix = new THREE.Matrix4();
+            matrix.compose(pos, new THREE.Quaternion(), new THREE.Vector3(0, 0, 0));
+            vertices.setMatrixAt(index, matrix);
         });
+        vertices.instanceMatrix.needsUpdate = true;
+        vertices.visible = true;
+
+        if (MAX_TIME === 0) {
+            verticesData.forEach((pos, index) => {
+                vertexScales[index] = 1;
+                const matrix = new THREE.Matrix4();
+                matrix.compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+                vertices.setMatrixAt(index, matrix);
+            });
+            vertices.instanceMatrix.needsUpdate = true;
+        } else {
+            verticesData.forEach((pos, index) => {
+                gsap.to(vertexScales, {
+                    [index]: 1,
+                    duration: ANIMATION_DURATION,
+                    delay: index * delayPerItem,
+                    ease: "back.out(1.7)",
+                    onUpdate: () => {
+                        if (!vertices) return;
+                        const matrix = new THREE.Matrix4();
+                        matrix.compose(
+                            pos,
+                            new THREE.Quaternion(),
+                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                        );
+                        vertices.setMatrixAt(index, matrix);
+                        vertices.instanceMatrix.needsUpdate = true;
+                    }
+                });
+            });
+        }
+        document.getElementById('show-vertices').textContent = 'Hide Vertices';
     } else {
-        // Toggle visibility
-        vertices.visible = !vertices.visible;
+        // Hide with reverse animation
+        if (MAX_TIME === 0) {
+            vertices.visible = false;
+            document.getElementById('show-vertices').textContent = 'Show Vertices';
+        } else {
+            const reverseCount = verticesData.length - 1;
+            verticesData.forEach((pos, index) => {
+                const reverseDelay = (reverseCount - index) * delayPerItem;
+                gsap.to(vertexScales, {
+                    [index]: 0,
+                    duration: ANIMATION_DURATION,
+                    delay: reverseDelay,
+                    ease: "power2.in",
+                    onUpdate: () => {
+                        if (!vertices) return;
+                        const matrix = new THREE.Matrix4();
+                        matrix.compose(
+                            pos,
+                            new THREE.Quaternion(),
+                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                        );
+                        vertices.setMatrixAt(index, matrix);
+                        vertices.instanceMatrix.needsUpdate = true;
+                    },
+                    onComplete: () => {
+                        if (index === 0) {
+                            vertices.visible = false;
+                            document.getElementById('show-vertices').textContent = 'Show Vertices';
+                        }
+                    }
+                });
+            });
+        }
     }
 }
 
 function connectEdges() {
-    if (!vertices) return;
+    // Ensure geometry/data is available independent of vertices mesh
+    if (!currentGeometry) {
+        updateGeometry();
+        if (!currentGeometry) return;
+    }
+    if (!verticesData || verticesData.length === 0 || !edgesData || edgesData.length === 0) {
+        extractData();
+    }
 
     if (!edgesMesh) {
         // Merge all edges into single geometry
@@ -287,113 +441,343 @@ function connectEdges() {
         // Clone the material for this instance
         const material = edgeShaderMaterial.clone();
         edgesMesh = new THREE.LineSegments(geometry, material);
+        edgesMesh.visible = false;
         scene.add(edgesMesh);
 
         // Initialize visibility tracking
         edgeVisibility = edgesData.map(() => 0);
+    }
 
-        // Calculate proportional delays to fit within 5 seconds total
-        const ANIMATION_DURATION = 0.3;
-        const MAX_TIME = 5;
-        const itemCount = edgesData.length;
-        const delayPerItem = (MAX_TIME - ANIMATION_DURATION) / Math.max(1, itemCount - 1);
+    // Kill any running animations
+    gsap.killTweensOf(edgeVisibility);
 
-        // Animate each edge to appear
+    // Calculate proportional delays
+    const ANIMATION_DURATION = 0.3;
+    const MAX_TIME = Math.max(0.3, animationMaxTime);
+    const itemCount = edgesData.length;
+    const delayPerItem = itemCount > 1 ? (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1) : 0;
+    const geometry = edgesMesh.geometry;
+
+    if (!edgesMesh.visible) {
+        // Show with animation
         edgesData.forEach((edge, edgeIndex) => {
-            gsap.to(edgeVisibility, {
-                [edgeIndex]: 1,
-                duration: ANIMATION_DURATION,
-                delay: edgeIndex * delayPerItem,
-                ease: "power2.out",
-                onUpdate: () => {
-                    const visAttr = geometry.attributes.visibility.array;
-                    // Update both vertices of this line segment
-                    visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                    visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
-                    geometry.attributes.visibility.needsUpdate = true;
-                }
-            });
+            edgeVisibility[edgeIndex] = 0;
+            const visAttr = geometry.attributes.visibility.array;
+            visAttr[edgeIndex * 2] = 0;
+            visAttr[edgeIndex * 2 + 1] = 0;
         });
+        geometry.attributes.visibility.needsUpdate = true;
+        edgesMesh.visible = true;
+
+        if (MAX_TIME === 0) {
+            edgesData.forEach((edge, edgeIndex) => {
+                edgeVisibility[edgeIndex] = 1;
+                const visAttr = geometry.attributes.visibility.array;
+                visAttr[edgeIndex * 2] = 1;
+                visAttr[edgeIndex * 2 + 1] = 1;
+            });
+            geometry.attributes.visibility.needsUpdate = true;
+        } else {
+            edgesData.forEach((edge, edgeIndex) => {
+                gsap.to(edgeVisibility, {
+                    [edgeIndex]: 1,
+                    duration: ANIMATION_DURATION,
+                    delay: edgeIndex * delayPerItem,
+                    ease: "power2.out",
+                    onUpdate: () => {
+                        const visAttr = geometry.attributes.visibility.array;
+                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
+                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                });
+            });
+        }
+        document.getElementById('connect-edges').textContent = 'Hide Edges';
     } else {
-        // Toggle visibility
-        edgesMesh.visible = !edgesMesh.visible;
+        // Hide with reverse animation
+        if (MAX_TIME === 0) {
+            edgesMesh.visible = false;
+            document.getElementById('connect-edges').textContent = 'Show Edges';
+        } else {
+            const reverseCount = edgesData.length - 1;
+            edgesData.forEach((edge, edgeIndex) => {
+                const reverseDelay = (reverseCount - edgeIndex) * delayPerItem;
+                gsap.to(edgeVisibility, {
+                    [edgeIndex]: 0,
+                    duration: ANIMATION_DURATION,
+                    delay: reverseDelay,
+                    ease: "power2.in",
+                    onUpdate: () => {
+                        const visAttr = geometry.attributes.visibility.array;
+                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
+                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
+                        geometry.attributes.visibility.needsUpdate = true;
+                    },
+                    onComplete: () => {
+                        if (edgeIndex === 0) {
+                            edgesMesh.visible = false;
+                            document.getElementById('connect-edges').textContent = 'Show Edges';
+                        }
+                    }
+                });
+            });
+        }
     }
 }
 
 function formFaces() {
-    if (!vertices) return;
+    // Ensure geometry/data is available independent of vertices mesh
+    if (!currentGeometry) {
+        updateGeometry();
+        if (!currentGeometry) return;
+    }
+    if (!verticesData || verticesData.length === 0 || !facesData || facesData.length === 0) {
+        extractData();
+    }
 
-    if (faces.length === 0) {
-        // Create faces
-        facesData.forEach((face, index) => {
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array([
-                verticesData[face[0]].x, verticesData[face[0]].y, verticesData[face[0]].z,
-                verticesData[face[1]].x, verticesData[face[1]].y, verticesData[face[1]].z,
-                verticesData[face[2]].x, verticesData[face[2]].y, verticesData[face[2]].z
-            ]);
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.computeVertexNormals();
+    if (!facesMesh) {
+        // Merge all faces into single geometry
+        const positions = [];
+        const visibilityArray = [];
 
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x0000ff,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0
-            });
-            const triangle = new THREE.Mesh(geometry, material);
-            scene.add(triangle);
-            faces.push(triangle);
+        facesData.forEach((face, faceIndex) => {
+            const v0 = verticesData[face[0]];
+            const v1 = verticesData[face[1]];
+            const v2 = verticesData[face[2]];
 
-            // Calculate proportional delays to fit within 5 seconds total
-            const ANIMATION_DURATION = 0.4;
-            const MAX_TIME = 5;
-            const itemCount = facesData.length;
-            const delayPerItem = (MAX_TIME - ANIMATION_DURATION) / Math.max(1, itemCount - 1);
+            // Add three vertices per triangle
+            positions.push(v0.x, v0.y, v0.z);
+            positions.push(v1.x, v1.y, v1.z);
+            positions.push(v2.x, v2.y, v2.z);
 
-            gsap.to(material, {
-                opacity: 0.7,
-                duration: ANIMATION_DURATION,
-                delay: index * delayPerItem,
-                ease: "power2.out"
-            });
+            // All three vertices of the triangle share same visibility for this face
+            visibilityArray.push(0, 0, 0);
         });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+        geometry.setAttribute('visibility', new THREE.BufferAttribute(new Float32Array(visibilityArray), 1));
+        geometry.computeVertexNormals();
+
+        // Clone the material for this instance
+        const material = faceShaderMaterial.clone();
+        facesMesh = new THREE.Mesh(geometry, material);
+        facesMesh.renderOrder = 1; // draw before assembled mesh
+        facesMesh.visible = false;
+        scene.add(facesMesh);
+
+        // Initialize visibility tracking
+        faceVisibility = facesData.map(() => 0);
+    }
+
+    // Kill any running animations
+    gsap.killTweensOf(faceVisibility);
+
+    // Calculate proportional delays
+    const ANIMATION_DURATION = 0.4;
+    const MAX_TIME = Math.max(0.4, animationMaxTime);
+    const itemCount = facesData.length;
+    const delayPerItem = itemCount > 1 ? (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1) : 0;
+    const geometry = facesMesh.geometry;
+
+    if (!facesMesh.visible) {
+        // Show with animation
+        facesData.forEach((face, faceIndex) => {
+            faceVisibility[faceIndex] = 0;
+            const visAttr = geometry.attributes.visibility.array;
+            visAttr[faceIndex * 3] = 0;
+            visAttr[faceIndex * 3 + 1] = 0;
+            visAttr[faceIndex * 3 + 2] = 0;
+        });
+        geometry.attributes.visibility.needsUpdate = true;
+        facesMesh.visible = true;
+
+        if (MAX_TIME === 0) {
+            facesData.forEach((face, faceIndex) => {
+                faceVisibility[faceIndex] = 1;
+                const visAttr = geometry.attributes.visibility.array;
+                visAttr[faceIndex * 3] = 1;
+                visAttr[faceIndex * 3 + 1] = 1;
+                visAttr[faceIndex * 3 + 2] = 1;
+            });
+            geometry.attributes.visibility.needsUpdate = true;
+        } else {
+            facesData.forEach((face, faceIndex) => {
+                gsap.to(faceVisibility, {
+                    [faceIndex]: 1,
+                    duration: ANIMATION_DURATION,
+                    delay: faceIndex * delayPerItem,
+                    ease: "power2.out",
+                    onUpdate: () => {
+                        const visAttr = geometry.attributes.visibility.array;
+                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
+                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
+                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                });
+            });
+        }
+        document.getElementById('form-faces').textContent = 'Hide Faces';
     } else {
-        // Toggle visibility
-        const visible = !faces[0].visible;
-        faces.forEach(f => f.visible = visible);
+        // Hide with reverse animation
+        if (MAX_TIME === 0) {
+            facesMesh.visible = false;
+            document.getElementById('form-faces').textContent = 'Show Faces';
+        } else {
+            const reverseCount = facesData.length - 1;
+            facesData.forEach((face, faceIndex) => {
+                const reverseDelay = (reverseCount - faceIndex) * delayPerItem;
+                gsap.to(faceVisibility, {
+                    [faceIndex]: 0,
+                    duration: ANIMATION_DURATION,
+                    delay: reverseDelay,
+                    ease: "power2.in",
+                    onUpdate: () => {
+                        const visAttr = geometry.attributes.visibility.array;
+                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
+                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
+                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
+                        geometry.attributes.visibility.needsUpdate = true;
+                    },
+                    onComplete: () => {
+                        if (faceIndex === 0) {
+                            facesMesh.visible = false;
+                            document.getElementById('form-faces').textContent = 'Show Faces';
+                        }
+                    }
+                });
+            });
+        }
     }
 }
 
 function assembleMesh() {
-    if (faces.length === 0) return;
+    // Ensure we have geometry available independent of faces
+    if (!currentGeometry) {
+        updateGeometry();
+        if (!currentGeometry) return;
+    }
 
     if (!mesh) {
-        // Hide raw faces to prevent Z-fighting
-        faces.forEach(face => face.visible = false);
+        // Don't hide faces yet - they'll stay visible during dissolve
+        // facesMesh.visible = false;
+        // document.getElementById('form-faces').textContent = 'Show Faces';
 
-        // Create complete mesh
+        // Create complete mesh with dither dissolve shader
         const geometry = currentGeometry.clone();
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x808080,
-            metalness: 0.2,
-            roughness: 0.1
+        
+        // Custom shader material with dither dissolve effect
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                baseColor: { value: new THREE.Color(0x808080) },
+                dissolve: { value: 0 },
+                metalness: { value: 0.2 },
+                roughness: { value: 0.1 },
+                lightPos: { value: new THREE.Vector3(2, 2, 1) }
+            },
+            vertexShader: `
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 baseColor;
+                uniform float dissolve;
+                uniform vec3 lightPos;
+                
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                
+                // Simple hash function for dither pattern
+                float hash(vec3 p) {
+                    return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+                }
+                
+                void main() {
+                    // Create dither pattern using position and dissolve value
+                    float dither = hash(vPosition * 10.0 + vec3(dissolve * 5.0));
+                    
+                    // Use dissolve threshold to progressively reveal mesh
+                    if (dither > dissolve) discard;
+                    
+                    // Simple lighting
+                    vec3 light = normalize(lightPos - vPosition);
+                    float diff = max(dot(vNormal, light), 0.2);
+                    vec3 color = baseColor * diff;
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `,
+            side: THREE.FrontSide,
+            depthTest: true,
+            depthWrite: true
         });
+        
         mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = 2; // ensure assembled renders after faces
         scene.add(mesh);
 
-        // Animate assembly
-        mesh.scale.set(0, 0, 0);
-        gsap.to(mesh.scale, {
-            x: 1,
-            y: 1,
-            z: 1,
-            duration: 1,
-            ease: "power2.out"
-        });
+        // Animate dither dissolve - duration equals slider value
+        const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
+        // Reset dissolve and kill any previous tweens
+        gsap.killTweensOf(material.uniforms.dissolve);
+        material.uniforms.dissolve.value = 0;
+        if (ASSEMBLY_DURATION === 0) {
+            material.uniforms.dissolve.value = 1;
+        } else {
+            gsap.to(material.uniforms.dissolve, {
+                value: 1,
+                duration: ASSEMBLY_DURATION,
+                ease: "power2.out"
+            });
+        }
+        document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
     } else {
-        // Toggle visibility
-        mesh.visible = !mesh.visible;
+        // Always animate on toggle
+        const material = mesh.material;
+        const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
+        gsap.killTweensOf(material.uniforms.dissolve);
+        
+        if (!mesh.visible) {
+            // Show with dissolve-in
+            material.uniforms.dissolve.value = 0;
+            mesh.visible = true;
+            if (ASSEMBLY_DURATION === 0) {
+                material.uniforms.dissolve.value = 1;
+            } else {
+                gsap.to(material.uniforms.dissolve, {
+                    value: 1,
+                    duration: ASSEMBLY_DURATION,
+                    ease: "power2.out"
+                });
+            }
+            document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
+        } else {
+            // Hide with dissolve-out
+            // Do not force-show faces if they were hidden
+            if (ASSEMBLY_DURATION === 0) {
+                material.uniforms.dissolve.value = 0;
+                mesh.visible = false;
+                document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
+            } else {
+                gsap.to(material.uniforms.dissolve, {
+                    value: 0,
+                    duration: ASSEMBLY_DURATION,
+                    ease: "power2.inOut",
+                    onComplete: () => {
+                        mesh.visible = false;
+                        document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
+                    }
+                });
+            }
+        }
     }
 }
 
@@ -404,20 +788,32 @@ function resetScene() {
 }
 
 function clearObjects() {
+    // Kill all running GSAP animations to prevent null reference errors
+    gsap.killTweensOf(vertexScales);
+    gsap.killTweensOf(edgeVisibility);
+    gsap.killTweensOf(faceVisibility);
+    
     if (vertices) {
         scene.remove(vertices);
         vertices = null;
         vertexScales = [];
+        document.getElementById('show-vertices').textContent = 'Show Vertices';
     }
     if (edgesMesh) {
         scene.remove(edgesMesh);
         edgesMesh = null;
         edgeVisibility = [];
+        document.getElementById('connect-edges').textContent = 'Show Edges';
     }
-    faces.forEach(obj => scene.remove(obj));
+    if (facesMesh) {
+        scene.remove(facesMesh);
+        facesMesh = null;
+        faceVisibility = [];
+        document.getElementById('form-faces').textContent = 'Show Faces';
+    }
     if (mesh) scene.remove(mesh);
-    faces = [];
     mesh = null;
+    document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
 }
 
 function updateInfo() {
