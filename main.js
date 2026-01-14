@@ -419,8 +419,6 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
                     if (!currentGeometry) {
                         currentGeometry = object.children[0];
                     }
-                    // Auto-scale and position the model based on bounding box
-                    autoScaleAndPositionModel(currentGeometry);
                     updateGeometry();
                     resetScene();
                 }
@@ -653,6 +651,8 @@ function updateGeometry() {
     } else {
         currentGeometry = shapeGeometries[currentShape]();
     }
+    // Apply auto-scaling and floor positioning to all geometries
+    autoScaleAndPositionModel(currentGeometry);
     extractData();
     updateInfo();
 }
