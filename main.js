@@ -3,7 +3,81 @@
 
 // ===== Scene Setup =====
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a1a);
+
+// ===== Sky Shader Setup =====
+// Procedural sky shader
+const createSkyMesh = () => {
+  const vertexShader = `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+  
+  const fragmentShader = `
+    precision highp float;
+    varying vec3 vWorldPosition;
+    uniform vec3 sunPosition;
+    
+    void main() {
+      vec3 direction = normalize(vWorldPosition - cameraPosition);
+      vec3 up = vec3(0.0, 1.0, 0.0);
+      
+      // Simple sky based on sun position
+      float sunDot = dot(direction, normalize(sunPosition));
+      float upDot = dot(direction, up);
+      
+      // Sky color: blue at top, warmer at horizon
+      vec3 skyColor = mix(
+        vec3(0.5, 0.7, 1.0),  // blue
+        vec3(1.0, 0.7, 0.3),  // warm orange
+        smoothstep(0.0, -0.3, upDot)
+      );
+      
+      // Sun glow
+      vec3 sunColor = vec3(1.0, 0.9, 0.7);
+      float sunIntensity = exp(-pow(1.0 - sunDot, 2.0) * 20.0);
+      skyColor += sunColor * sunIntensity * 0.5;
+      
+      gl_FragColor = vec4(skyColor, 1.0);
+    }
+  `;
+  
+  const geometry = new THREE.SphereGeometry(1, 32, 32);
+  const material = new THREE.ShaderMaterial({
+    name: 'SkyShader',
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
+    },
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader
+  });
+  
+  return new THREE.Mesh(geometry, material);
+};
+
+const sky = createSkyMesh();
+sky.scale.set(100, 100, 100);
+
+// Sun position for sky shader
+let sunElevation = 45;
+let sunAzimuth = 135;
+const sunVector = new THREE.Vector3();
+
+function updateSunPosition() {
+  const phi = THREE.MathUtils.degToRad(90 - sunElevation);
+  const theta = THREE.MathUtils.degToRad(sunAzimuth);
+  sunVector.setFromSphericalCoords(1, phi, theta);
+  sky.material.uniforms.sunPosition.value.copy(sunVector);
+}
+updateSunPosition();
+
+// Sky follows camera
+scene.add(sky);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 3;
@@ -11,29 +85,53 @@ camera.position.z = 3;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.physicallyCorrectLights = true;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 // ===== Lighting Setup =====
-// Key light (main)
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
-keyLight.position.set(8, 8, 1);
-scene.add(keyLight);
+// Hemisphere light to match sky colors (blue top, warm bottom)
+const hemisphereLight = new THREE.HemisphereLight(
+  0x87ceeb, // sky color (blue)
+  0xffa644, // ground color (warm orange)
+  0.6       // intensity
+);
+scene.add(hemisphereLight);
 
-// Fill light (shadow fill)
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
-fillLight.position.set(-8, 4, 1);
-scene.add(fillLight);
+// Directional lights grouped to rotate together
+const lightsGroup = new THREE.Group();
+scene.add(lightsGroup);
 
-// Back light (rim)
-const backLight = new THREE.DirectionalLight(0xffffff, 1.0);
-backLight.position.set(0, -4, -8);
-scene.add(backLight);
+// Key light (main) - front right
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+keyLight.position.set(4, 5, 3);
+keyLight.castShadow = false;
+lightsGroup.add(keyLight);
+
+// Rim light - back left
+const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+rimLight.position.set(-4, 5, -3);
+rimLight.castShadow = false;
+lightsGroup.add(rimLight);
 
 // ===== Helpers =====
 // Grid helper
 const gridHelper = new THREE.GridHelper(10, 10);
 gridHelper.position.y = -1;
 scene.add(gridHelper);
+
+// Semi-transparent black plane under grid
+const planeGeometry = new THREE.PlaneGeometry(10, 10);
+const planeMaterial = new THREE.MeshBasicMaterial({ 
+  color: 0x000000, 
+  transparent: true, 
+  opacity: 0.5 
+});
+const floorPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+floorPlane.position.y = -1;
+floorPlane.rotation.x = -Math.PI / 2;
+scene.add(floorPlane);
 
 // Axes helper (navigation)
 const axesHelper = new THREE.AxesHelper(1);
@@ -1086,6 +1184,18 @@ function animate() {
     const camQuat = camera.quaternion.clone();
     camQuat.invert();
     axesHelper.quaternion.copy(camQuat);
+
+    // Sky follows camera position
+    sky.position.copy(camera.position);
+
+    // Rotate lights group and sky slowly
+    const dTheta = 0.0025;
+    lightsGroup.rotation.y += dTheta;
+    sky.rotation.y += dTheta;
+    
+    // Update sun position for sky shader
+    sunAzimuth += THREE.MathUtils.radToDeg(dTheta);
+    updateSunPosition();
 
     renderer.render(scene, camera);
 }
