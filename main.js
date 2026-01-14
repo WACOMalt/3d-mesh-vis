@@ -74,9 +74,33 @@ let edgesData = [];
 let facesData = [];
 let vertices = null;  // InstancedMesh
 let vertexScales = [];  // Track individual vertex scales for animation
-let edges = [];
+let edgesMesh = null;  // Merged edges mesh
+let edgeVisibility = [];  // Track individual edge visibility for animation
 let faces = [];
 let mesh = null;
+
+// ===== Custom Shader Material for Edges =====
+const edgeShaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {},
+    vertexShader: `
+        attribute float visibility;
+        varying float vVisibility;
+        
+        void main() {
+            vVisibility = visibility;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying float vVisibility;
+        
+        void main() {
+            gl_FragColor = vec4(0.0, 1.0, 0.0, vVisibility);
+        }
+    `,
+    transparent: true,
+    linewidth: 3
+});
 
 // ===== Shape Geometries =====
 const shapeGeometries = {
@@ -233,35 +257,54 @@ function showVertices() {
 function connectEdges() {
     if (!vertices) return;
 
-    if (edges.length === 0) {
-        // Create edges
-        edgesData.forEach((edge, index) => {
-            const points = [
-                verticesData[edge[0]],
-                verticesData[edge[1]]
-            ];
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({
-                color: 0x00ff00,
-                transparent: true,
-                opacity: 0,
-                linewidth: 3
-            });
-            const line = new THREE.Line(geometry, material);
-            scene.add(line);
-            edges.push(line);
+    if (!edgesMesh) {
+        // Merge all edges into single geometry
+        const positions = [];
+        const visibilityArray = [];
 
-            gsap.to(material, {
-                opacity: 1,
+        edgesData.forEach((edge, edgeIndex) => {
+            const p1 = verticesData[edge[0]];
+            const p2 = verticesData[edge[1]];
+            
+            // Add two vertices per line
+            positions.push(p1.x, p1.y, p1.z);
+            positions.push(p2.x, p2.y, p2.z);
+            
+            // Both vertices of the line share same visibility for this edge
+            visibilityArray.push(0, 0);
+        });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+        geometry.setAttribute('visibility', new THREE.BufferAttribute(new Float32Array(visibilityArray), 1));
+
+        // Clone the material for this instance
+        const material = edgeShaderMaterial.clone();
+        edgesMesh = new THREE.LineSegments(geometry, material);
+        scene.add(edgesMesh);
+
+        // Initialize visibility tracking
+        edgeVisibility = edgesData.map(() => 0);
+
+        // Animate each edge to appear
+        edgesData.forEach((edge, edgeIndex) => {
+            gsap.to(edgeVisibility, {
+                [edgeIndex]: 1,
                 duration: 0.3,
-                delay: index * 0.03,
-                ease: "power2.out"
+                delay: edgeIndex * 0.03,
+                ease: "power2.out",
+                onUpdate: () => {
+                    const visAttr = geometry.attributes.visibility.array;
+                    // Update both vertices of this line segment
+                    visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
+                    visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
+                    geometry.attributes.visibility.needsUpdate = true;
+                }
             });
         });
     } else {
         // Toggle visibility
-        const visible = !edges[0].visible;
-        edges.forEach(e => e.visible = visible);
+        edgesMesh.visible = !edgesMesh.visible;
     }
 }
 
@@ -348,10 +391,13 @@ function clearObjects() {
         vertices = null;
         vertexScales = [];
     }
-    edges.forEach(obj => scene.remove(obj));
+    if (edgesMesh) {
+        scene.remove(edgesMesh);
+        edgesMesh = null;
+        edgeVisibility = [];
+    }
     faces.forEach(obj => scene.remove(obj));
     if (mesh) scene.remove(mesh);
-    edges = [];
     faces = [];
     mesh = null;
 }
