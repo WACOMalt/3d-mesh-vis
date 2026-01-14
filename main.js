@@ -69,6 +69,7 @@ controls.dampingFactor = 0.05;
 // ===== Data Storage =====
 let currentShape = 'cube';
 let currentGeometry = null;
+let currentMaterial = null;  // Store original material for textures
 let verticesData = [];
 let edgesData = [];
 let facesData = [];
@@ -207,6 +208,7 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
                 const object = objLoader.parse(event.target.result);
                 if (object.children.length > 0) {
                     currentGeometry = object.children[0].geometry;
+                    currentMaterial = object.children[0].material || null;
                     if (!currentGeometry) {
                         currentGeometry = object.children[0];
                     }
@@ -700,22 +702,32 @@ function assembleMesh() {
         // Create complete mesh with dither dissolve shader
         const geometry = currentGeometry.clone();
         
-        // Custom shader material with dither dissolve effect
+        // Extract texture from original material if available
+        let hasTexture = false;
+        let textureMap = null;
+        if (currentMaterial && currentMaterial.map) {
+            hasTexture = true;
+            textureMap = currentMaterial.map;
+        }
+        
+        // Custom shader material with dither dissolve effect and texture support
         const material = new THREE.ShaderMaterial({
             uniforms: {
                 baseColor: { value: new THREE.Color(0x808080) },
                 dissolve: { value: 0 },
-                metalness: { value: 0.2 },
-                roughness: { value: 0.1 },
-                lightPos: { value: new THREE.Vector3(2, 2, 1) }
+                lightPos: { value: new THREE.Vector3(2, 2, 1) },
+                hasTexture: { value: hasTexture ? 1.0 : 0.0 },
+                textureMap: { value: textureMap }
             },
             vertexShader: `
                 varying vec3 vNormal;
                 varying vec3 vPosition;
+                varying vec2 vUv;
                 
                 void main() {
                     vNormal = normalize(normalMatrix * normal);
                     vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    vUv = uv;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
@@ -723,9 +735,12 @@ function assembleMesh() {
                 uniform vec3 baseColor;
                 uniform float dissolve;
                 uniform vec3 lightPos;
+                uniform float hasTexture;
+                uniform sampler2D textureMap;
                 
                 varying vec3 vNormal;
                 varying vec3 vPosition;
+                varying vec2 vUv;
                 
                 // Simple hash function for dither pattern
                 float hash(vec3 p) {
@@ -739,10 +754,16 @@ function assembleMesh() {
                     // Use dissolve threshold to progressively reveal mesh
                     if (dither > dissolve) discard;
                     
+                    // Get base color from texture or uniform
+                    vec3 albedo = baseColor;
+                    if (hasTexture > 0.5) {
+                        albedo = texture2D(textureMap, vUv).rgb;
+                    }
+                    
                     // Simple lighting
                     vec3 light = normalize(lightPos - vPosition);
                     float diff = max(dot(vNormal, light), 0.2);
-                    vec3 color = baseColor * diff;
+                    vec3 color = albedo * diff;
                     
                     gl_FragColor = vec4(color, 1.0);
                 }
