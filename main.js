@@ -236,8 +236,20 @@ document.getElementById('lighting-rotation').addEventListener('input', (e) => {
 });
 
 let vertexSizeTimeout;
-document.getElementById('vertex-size').addEventListener('input', (e) => {
-    console.log('vertex-size input event fired:', e.target.value);
+const vertexSizeInput = document.getElementById('vertex-size');
+console.log('Setting up vertex-size listener:', vertexSizeInput);
+
+// Test if mouse events are being detected
+vertexSizeInput.addEventListener('mousedown', (e) => {
+    console.log('vertex-size MOUSEDOWN event fired');
+});
+
+vertexSizeInput.addEventListener('touchstart', (e) => {
+    console.log('vertex-size TOUCHSTART event fired');
+});
+
+vertexSizeInput.addEventListener('input', (e) => {
+    console.log('vertex-size INPUT event fired:', e.target.value);
     vertexSize = parseFloat(e.target.value);
     document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
     
@@ -248,6 +260,7 @@ document.getElementById('vertex-size').addEventListener('input', (e) => {
         if (vertices) updateVertexGeometry();
     }, 150);
 });
+console.log('vertex-size listener attached');
 
 document.getElementById('animation-max-time').addEventListener('input', (e) => {
     animationMaxTime = parseFloat(e.target.value);
@@ -310,8 +323,14 @@ function showVertices() {
     if (!vertices) {
         // Create InstancedMesh for all vertices (one draw call)
         const geometry = new THREE.SphereGeometry(vertexSize, 5, 3);
-        const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        const material = new THREE.MeshPhongMaterial({
+            color: 0xff0000,
+            emissive: new THREE.Color(0xff0000),
+            emissiveIntensity: 0.5
+        });
         vertices = new THREE.InstancedMesh(geometry, material, verticesData.length);
+        // Expose for debugging/inspection
+        window.verticesMesh = vertices;
         vertices.castShadow = true;
         vertices.receiveShadow = true;
         vertices.visible = false;
@@ -335,9 +354,9 @@ function showVertices() {
 
     // Calculate proportional delays
     const ANIMATION_DURATION = 0.5;
-    const MAX_TIME = Math.max(0.5, animationMaxTime);
+    const MAX_TIME = animationMaxTime;
     const itemCount = verticesData.length;
-    const delayPerItem = itemCount > 1 ? (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1) : 0;
+    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1)) : 0;
 
     if (!vertices.visible) {
         // Show with animation
@@ -364,7 +383,7 @@ function showVertices() {
                     [index]: 1,
                     duration: ANIMATION_DURATION,
                     delay: index * delayPerItem,
-                    ease: "back.out(1.7)",
+                    ease: "none",
                     onUpdate: () => {
                         if (!vertices) return;
                         const matrix = new THREE.Matrix4();
@@ -393,7 +412,7 @@ function showVertices() {
                     [index]: 0,
                     duration: ANIMATION_DURATION,
                     delay: reverseDelay,
-                    ease: "power2.in",
+                    ease: "none",
                     onUpdate: () => {
                         if (!vertices) return;
                         const matrix = new THREE.Matrix4();
@@ -463,9 +482,9 @@ function connectEdges() {
 
     // Calculate proportional delays
     const ANIMATION_DURATION = 0.3;
-    const MAX_TIME = Math.max(0.3, animationMaxTime);
+    const MAX_TIME = animationMaxTime;
     const itemCount = edgesData.length;
-    const delayPerItem = itemCount > 1 ? (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1) : 0;
+    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1)) : 0;
     const geometry = edgesMesh.geometry;
 
     if (!edgesMesh.visible) {
@@ -493,7 +512,7 @@ function connectEdges() {
                     [edgeIndex]: 1,
                     duration: ANIMATION_DURATION,
                     delay: edgeIndex * delayPerItem,
-                    ease: "power2.out",
+                    ease: "none",
                     onUpdate: () => {
                         const visAttr = geometry.attributes.visibility.array;
                         visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
@@ -517,7 +536,7 @@ function connectEdges() {
                     [edgeIndex]: 0,
                     duration: ANIMATION_DURATION,
                     delay: reverseDelay,
-                    ease: "power2.in",
+                    ease: "none",
                     onUpdate: () => {
                         const visAttr = geometry.attributes.visibility.array;
                         visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
@@ -586,9 +605,9 @@ function formFaces() {
 
     // Calculate proportional delays
     const ANIMATION_DURATION = 0.4;
-    const MAX_TIME = Math.max(0.4, animationMaxTime);
+    const MAX_TIME = animationMaxTime;
     const itemCount = facesData.length;
-    const delayPerItem = itemCount > 1 ? (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1) : 0;
+    const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - ANIMATION_DURATION) / (itemCount - 1)) : 0;
     const geometry = facesMesh.geometry;
 
     if (!facesMesh.visible) {
@@ -618,7 +637,7 @@ function formFaces() {
                     [faceIndex]: 1,
                     duration: ANIMATION_DURATION,
                     delay: faceIndex * delayPerItem,
-                    ease: "power2.out",
+                    ease: "none",
                     onUpdate: () => {
                         const visAttr = geometry.attributes.visibility.array;
                         visAttr[faceIndex * 3] = faceVisibility[faceIndex];
@@ -643,7 +662,7 @@ function formFaces() {
                     [faceIndex]: 0,
                     duration: ANIMATION_DURATION,
                     delay: reverseDelay,
-                    ease: "power2.in",
+                    ease: "none",
                     onUpdate: () => {
                         const visAttr = geometry.attributes.visibility.array;
                         visAttr[faceIndex * 3] = faceVisibility[faceIndex];
@@ -745,7 +764,7 @@ function assembleMesh() {
             gsap.to(material.uniforms.dissolve, {
                 value: 1,
                 duration: ASSEMBLY_DURATION,
-                ease: "power2.out"
+                ease: "none"
             });
         }
         document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
@@ -765,7 +784,7 @@ function assembleMesh() {
                 gsap.to(material.uniforms.dissolve, {
                     value: 1,
                     duration: ASSEMBLY_DURATION,
-                    ease: "power2.out"
+                    ease: "none"
                 });
             }
             document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
@@ -780,7 +799,7 @@ function assembleMesh() {
                 gsap.to(material.uniforms.dissolve, {
                     value: 0,
                     duration: ASSEMBLY_DURATION,
-                    ease: "power2.inOut",
+                    ease: "none",
                     onComplete: () => {
                         mesh.visible = false;
                         document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
@@ -806,6 +825,7 @@ function clearObjects() {
     if (vertices) {
         scene.remove(vertices);
         vertices = null;
+        window.verticesMesh = null;
         vertexScales = [];
         document.getElementById('show-vertices').textContent = 'Show Vertices';
     }
