@@ -165,7 +165,7 @@ floorAxesHelper.position.y = -0.999;
 scene.add(floorAxesHelper);
 
 // ===== Controls =====
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
