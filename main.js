@@ -12,6 +12,44 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+// ===== Environment Map Setup =====
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+
+// Create a simple gradient environment texture
+const envScene = new THREE.Scene();
+const envCamera = new THREE.PerspectiveCamera();
+const envGeometry = new THREE.SphereGeometry(500, 60, 40);
+const envMaterial = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+            vec3 direction = normalize(vWorldPosition);
+            float gradient = direction.y * 0.5 + 0.5;
+            vec3 topColor = vec3(0.4, 0.45, 0.5);
+            vec3 bottomColor = vec3(0.15, 0.15, 0.2);
+            vec3 color = mix(bottomColor, topColor, gradient);
+            gl_FragColor = vec4(color, 1.0);
+        }
+    `
+});
+const envMesh = new THREE.Mesh(envGeometry, envMaterial);
+envScene.add(envMesh);
+const envRenderTarget = pmremGenerator.fromScene(envScene);
+scene.environment = envRenderTarget.texture;
+envGeometry.dispose();
+envMaterial.dispose();
+pmremGenerator.dispose();
+
 // ===== Lighting Setup =====
 // Key light (main)
 const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -332,10 +370,13 @@ function showVertices() {
     if (!vertices) {
         // Create InstancedMesh for all vertices (one draw call)
         const geometry = new THREE.SphereGeometry(vertexSize, 5, 3);
-        const material = new THREE.MeshPhongMaterial({
+        const material = new THREE.MeshStandardMaterial({
             color: 0xff0000,
             emissive: new THREE.Color(0xff0000),
-            emissiveIntensity: 0.5
+            emissiveIntensity: 0.5,
+            metalness: 0.3,
+            roughness: 0.6,
+            envMapIntensity: 0.8
         });
         vertices = new THREE.InstancedMesh(geometry, material, verticesData.length);
         // Expose for debugging/inspection
@@ -726,16 +767,23 @@ function assembleMesh() {
                 fillLightPos: { value: fillLight.position.clone() },
                 backLightPos: { value: backLight.position.clone() },
                 hasTexture: { value: hasTexture ? 1.0 : 0.0 },
-                textureMap: { value: textureMap }
+                textureMap: { value: textureMap },
+                envMap: { value: scene.environment },
+                envMapIntensity: { value: 0.3 }
             },
             vertexShader: `
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying vec2 vUv;
+                varying vec3 vWorldNormal;
+                varying vec3 vViewPosition;
                 
                 void main() {
                     vNormal = normalize(normalMatrix * normal);
-                    vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vPosition = worldPosition.xyz;
+                    vViewPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
                     vUv = uv;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
@@ -748,10 +796,14 @@ function assembleMesh() {
                 uniform vec3 backLightPos;
                 uniform float hasTexture;
                 uniform sampler2D textureMap;
+                uniform samplerCube envMap;
+                uniform float envMapIntensity;
                 
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying vec2 vUv;
+                varying vec3 vWorldNormal;
+                varying vec3 vViewPosition;
                 
                 // Simple hash function for dither pattern
                 float hash(vec3 p) {
@@ -782,7 +834,19 @@ function assembleMesh() {
                     float ambient = 0.2;  // Ambient light
                     
                     float totalLight = keyDiff + fillDiff + backDiff + ambient;
-                    vec3 color = albedo * totalLight;
+                    vec3 diffuseColor = albedo * totalLight;
+                    
+                    // Add environment reflections
+                    vec3 viewDir = normalize(vPosition - cameraPosition);
+                    vec3 reflectVec = reflect(viewDir, vWorldNormal);
+                    vec3 envColor = textureCube(envMap, reflectVec).rgb;
+                    
+                    // Blend diffuse and reflection based on surface properties
+                    float metalness = 0.15;
+                    float roughness = 0.7;
+                    float reflectivity = metalness * (1.0 - roughness);
+                    
+                    vec3 color = mix(diffuseColor, envColor, reflectivity * envMapIntensity);
                     
                     gl_FragColor = vec4(color, 1.0);
                 }
