@@ -25,14 +25,15 @@ const createSkyMesh = () => {
     varying vec3 vWorldPosition;
     uniform vec3 sunPosition;
     uniform float showHorizonCutoff;
+    uniform vec3 horizonColor;
     
     void main() {
       vec3 direction = normalize(vWorldPosition - cameraPosition);
       vec3 up = vec3(0.0, 1.0, 0.0);
       
-      // Hard cut at horizon - anything below is dark grey (only when enabled)
+      // Hard cut at horizon - anything below uses horizonColor (only when enabled)
       if (direction.y < 0.0 && showHorizonCutoff > 0.5) {
-        gl_FragColor = vec4(0.2, 0.2, 0.2, 1.0); // #333333
+        gl_FragColor = vec4(horizonColor, 1.0);
         return;
       }
       
@@ -43,7 +44,7 @@ const createSkyMesh = () => {
       // Sky color: blue at top, warmer at horizon
       vec3 skyColor = mix(
         vec3(0.5, 0.7, 1.0),  // blue
-        vec3(1.0, 0.7, 0.3),  // warm orange
+                vec3(0.2, 0.2, 0.2),  // dark grey
         smoothstep(0.0, -0.3, upDot)
       );
       
@@ -63,7 +64,8 @@ const createSkyMesh = () => {
     depthWrite: false,
     uniforms: {
       sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
-      showHorizonCutoff: { value: 1.0 }
+            showHorizonCutoff: { value: 0.0 },
+      horizonColor: { value: new THREE.Color(0x333333) }
     },
     vertexShader: vertexShader,
     fragmentShader: fragmentShader
@@ -253,11 +255,12 @@ const faceShaderMaterial = new THREE.ShaderMaterial({
         void main() {
             // Opaque reveal: discard pixels based on animated visibility
             float dither = hash(vWorldPosition * 10.0);
-            if (dither > vVisibility) discard;
+            if (dither >= vVisibility) discard;
 
             // Different colors for outside vs inside
             vec3 baseColor = mix(outsideColor, insideColor, inside);
             vec3 N = normalize(mix(vNormal, -vNormal, inside));
+            vec3 V = normalize(cameraPosition - vWorldPosition);
             
             // Normalized light directions
             vec3 keyLight = normalize(keyLightPos - vWorldPosition);
@@ -269,8 +272,20 @@ const faceShaderMaterial = new THREE.ShaderMaterial({
             
             float totalDiffuse = keyDiff + rimDiff;
             vec3 diffuseColor = baseColor * totalDiffuse;
+            
+            // Blinn-Phong specular
+            float shininess = 32.0;
+            float specularStrength = 0.3;
+            
+            vec3 H1 = normalize(keyLight + V);
+            float spec1 = pow(max(dot(N, H1), 0.0), shininess) * 2.0;
+            
+            vec3 H2 = normalize(rimLight + V);
+            float spec2 = pow(max(dot(N, H2), 0.0), shininess) * 1.5;
+            
+            vec3 specularColor = vec3(1.0) * (spec1 + spec2) * specularStrength;
 
-            vec3 finalColor = diffuseColor;
+            vec3 finalColor = diffuseColor + specularColor;
 
             gl_FragColor = vec4(finalColor, 1.0);
         }
@@ -293,7 +308,8 @@ const shapeGeometries = {
 };
 
 // ===== Lighting Configuration =====
-let lightingRotation = 0;
+let lightingRotation = 180;
+let skyboxRotation = 212;
 let vertexSize = 0.05;
 let animationMaxTime = 2;
 let floorHelpersVisible = true;
@@ -316,20 +332,48 @@ function rotateLights(angle) {
     
     // Update shader uniforms if assembled mesh exists
     if (mesh && mesh.material && mesh.material.uniforms) {
-        mesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
         mesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
     
     // Update shader uniforms if faces mesh exists
     if (facesMesh && facesMesh.material && facesMesh.material.uniforms) {
-        facesMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
         facesMesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
 
     // Update shader uniforms if inside faces mesh exists
     if (facesInnerMesh && facesInnerMesh.material && facesInnerMesh.material.uniforms) {
-        facesInnerMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
         facesInnerMesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
+    }
+}
+
+function rotateSkybox(angle) {
+    // Update sun azimuth based on slider angle
+    sunAzimuth = angle;
+    updateSunPosition();
+
+    // Also rotate the skybox mesh itself
+    sky.rotation.y = (angle * Math.PI) / 180;
+
+    // Update shader uniforms if assembled mesh exists
+    if (mesh && mesh.material && mesh.material.uniforms) {
+        mesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
+    }
+
+    // Update shader uniforms if faces mesh exists
+    if (facesMesh && facesMesh.material && facesMesh.material.uniforms) {
+        facesMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
+    }
+
+    // Update shader uniforms if inside faces mesh exists
+    if (facesInnerMesh && facesInnerMesh.material && facesInnerMesh.material.uniforms) {
+        facesInnerMesh.material.uniforms.keyLightPos.value.copy(keyLight.position);
+    }
+}
+
+// Safe wrapper to avoid runtime errors if rotateSkybox is unavailable
+function applySkyboxRotation(angle) {
+    if (typeof rotateSkybox === 'function') {
+        rotateSkybox(angle);
     }
 }
 
@@ -400,6 +444,68 @@ document.getElementById('lighting-rotation').addEventListener('input', (e) => {
     document.getElementById('lighting-rotation-value').textContent = lightingRotation + '°';
 });
 
+document.getElementById('skybox-rotation').addEventListener('input', (e) => {
+    skyboxRotation = parseFloat(e.target.value);
+    applySkyboxRotation(skyboxRotation);
+    document.getElementById('skybox-rotation-value').textContent = skyboxRotation + '°';
+});
+
+// Initial sync of controls to defaults
+rotateLights(lightingRotation);
+applySkyboxRotation(skyboxRotation);
+document.getElementById('lighting-rotation').value = lightingRotation;
+document.getElementById('lighting-rotation-value').textContent = lightingRotation + '°';
+document.getElementById('skybox-rotation').value = skyboxRotation;
+document.getElementById('skybox-rotation-value').textContent = skyboxRotation + '°';
+
+// Reset settings to defaults
+document.getElementById('settings-reset').addEventListener('click', () => {
+    // Defaults
+    lightingRotation = 180;
+    skyboxRotation = 212;
+    vertexSize = 0.05;
+    animationMaxTime = 2;
+    floorHelpersVisible = true;
+
+    // Sliders + labels
+    const lightSlider = document.getElementById('lighting-rotation');
+    lightSlider.value = lightingRotation;
+    document.getElementById('lighting-rotation-value').textContent = lightingRotation + '°';
+    rotateLights(lightingRotation);
+
+    const skySlider = document.getElementById('skybox-rotation');
+    skySlider.value = skyboxRotation;
+    document.getElementById('skybox-rotation-value').textContent = skyboxRotation + '°';
+    applySkyboxRotation(skyboxRotation);
+
+    const vertexSlider = document.getElementById('vertex-size');
+    vertexSlider.value = vertexSize;
+    document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
+    if (vertices) updateVertexGeometry();
+
+    const animSlider = document.getElementById('animation-max-time');
+    animSlider.value = animationMaxTime;
+    document.getElementById('animation-max-time-value').textContent = animationMaxTime + 's';
+
+    // Background color
+    const bgInput = document.getElementById('bg-color');
+    bgInput.value = '#333333';
+    renderer.setClearColor(0x333333);
+    document.body.style.background = '#333333';
+    sky.material.uniforms.horizonColor.value.setHex(0x333333);
+
+    // Toggles
+    gridHelper.visible = true;
+    floorAxesHelper.visible = true;
+    document.getElementById('toggle-floor-helpers').style.background = 'rgba(0, 123, 255, 0.8)';
+
+    sky.visible = true;
+    document.getElementById('toggle-background').style.background = 'rgba(0, 123, 255, 0.8)';
+
+    sky.material.uniforms.showHorizonCutoff.value = 0.0;
+    document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+});
+
 let vertexSizeTimeout;
 const vertexSizeInput = document.getElementById('vertex-size');
 console.log('Setting up vertex-size listener:', vertexSizeInput);
@@ -451,6 +557,20 @@ document.getElementById('toggle-skybox-bottom').addEventListener('click', () => 
     sky.material.uniforms.showHorizonCutoff.value = currentValue > 0.5 ? 0.0 : 1.0;
     const button = document.getElementById('toggle-skybox-bottom');
     button.style.background = sky.material.uniforms.showHorizonCutoff.value > 0.5 ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+});
+
+// Initialize toggle state to off (bottom hidden)
+document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+
+// ===== Color Picker =====
+const bgColorInput = document.getElementById('bg-color');
+bgColorInput.addEventListener('input', (e) => {
+    const hexColor = e.target.value;
+    const decimalColor = parseInt(hexColor.substring(1), 16);
+    renderer.setClearColor(decimalColor);
+    document.body.style.background = hexColor;
+    // Also update skybox bottom color
+    sky.material.uniforms.horizonColor.value.setHex(decimalColor);
 });
 
 // ===== Core Functions =====
@@ -955,6 +1075,7 @@ function assembleMesh() {
                     if (dither > dissolve) discard;
                     
                     vec3 N = normalize(vNormal);
+                    vec3 V = normalize(cameraPosition - vWorldPosition);
                     
                     // Normalized light directions
                     vec3 keyLight = normalize(keyLightPos - vWorldPosition);
@@ -967,7 +1088,19 @@ function assembleMesh() {
                     float totalDiffuse = keyDiff + rimDiff;
                     vec3 diffuseColor = vec3(0.5) * totalDiffuse;
                     
-                    vec3 finalColor = diffuseColor;
+                    // Blinn-Phong specular
+                    float shininess = 32.0;
+                    float specularStrength = 0.3;
+                    
+                    vec3 H1 = normalize(keyLight + V);
+                    float spec1 = pow(max(dot(N, H1), 0.0), shininess) * 2.0;
+                    
+                    vec3 H2 = normalize(rimLight + V);
+                    float spec2 = pow(max(dot(N, H2), 0.0), shininess) * 1.5;
+                    
+                    vec3 specularColor = vec3(1.0) * (spec1 + spec2) * specularStrength;
+                    
+                    vec3 finalColor = diffuseColor + specularColor;
                     
                     gl_FragColor = vec4(finalColor, 1.0);
                 }
@@ -1096,15 +1229,6 @@ function animate() {
 
     // Sky follows camera position
     sky.position.copy(camera.position);
-
-    // Rotate lights group and sky slowly
-    const dTheta = 0.0025;
-    lightsGroup.rotation.y += dTheta;
-    sky.rotation.y += dTheta;
-    
-    // Update sun position for sky shader
-    sunAzimuth += THREE.MathUtils.radToDeg(dTheta);
-    updateSunPosition();
 
     renderer.render(scene, camera);
 }
