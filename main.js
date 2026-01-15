@@ -113,17 +113,19 @@ function updateSunPosition() {
 // Sky follows camera
 scene.add(sky);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const canvasContainer = document.getElementById('canvas-container');
+const camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
 camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
 renderer.setClearColor(0x333333);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.physicallyCorrectLights = true;
-document.getElementById('canvas-container').appendChild(renderer.domElement);
+canvasContainer.appendChild(renderer.domElement);
 
 // ===== Lighting Setup =====
 // Hemisphere light to match sky colors (blue top, warm bottom)
@@ -1454,9 +1456,32 @@ function updateInfo() {
 }
 
 // ===== Animation Loop =====
+function adjustCameraForPanels() {
+    const isMobileView = window.innerWidth <= 535;
+    
+    if (isMobileView) {
+        // On mobile, only rotate if settings panel is open
+        if (!isCollapsed) {
+            // Settings panel is open, rotate camera around its local right axis (pitch down)
+            const rotationAngle = THREE.MathUtils.degToRad(-20);
+            camera.rotateX(rotationAngle);
+        }
+        // If collapsed (panel closed), no rotation
+    } else {
+        // On desktop, only rotate if settings panel is open
+        if (!isCollapsed) {
+            const rotationAngle = THREE.MathUtils.degToRad(15);
+            camera.rotateOnWorldAxis(camera.up, rotationAngle);
+        }
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    
+    // Adjust camera rotation for UI panels
+    adjustCameraForPanels();
 
     // Update navigation axes orientation
     const camQuat = camera.quaternion.clone();
@@ -1472,9 +1497,12 @@ animate();
 
 // ===== Window Resize Handler =====
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const width = canvasContainer.clientWidth;
+    const height = canvasContainer.clientHeight;
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
 });
 
 // ===== Service Worker Registration =====
@@ -1486,12 +1514,13 @@ if ('serviceWorker' in navigator) {
 }
 
 // ===== Mobile & Desktop UI Management =====
+var isCollapsed = true; // Default to collapsed, will be set properly in initUI
+
 (function initUI() {
     const settingsPanel = document.getElementById('settings');
     const isMobile = () => window.innerWidth <= 535;
     
     // Track collapsed/expanded state independently from display mode
-    let isCollapsed = false;
     
     function syncPanelState() {
         // Apply the user's preference (collapsed or not) based on current layout
