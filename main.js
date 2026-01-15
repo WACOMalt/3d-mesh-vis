@@ -1462,3 +1462,11 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// ===== Service Worker Registration =====
+if ('serviceWorker' in navigator) {
+    const baseUrl = new URL('.', import.meta.url).pathname;
+    navigator.serviceWorker.register('service-worker.js', { scope: baseUrl })
+        .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+}

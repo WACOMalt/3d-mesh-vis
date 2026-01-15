@@ -320,15 +320,5 @@
 
     <!-- Main application script as module -->
     <script type="module" src="main.js"></script>
-
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            const baseUrl = new URL('.', import.meta.url).pathname;
-            navigator.serviceWorker.register('service-worker.js', { scope: baseUrl })
-                .then(reg => console.log('Service Worker registered with scope:', reg.scope))
-                .catch(err => console.log('Service Worker registration failed:', err));
-        }
-    </script>
 </body>
 </html>
