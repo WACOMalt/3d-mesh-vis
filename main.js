@@ -1551,8 +1551,21 @@ if ('serviceWorker' in navigator) {
             const newMode = isMobile() ? 'mobile' : 'desktop';
             if (newMode !== currentMode) {
                 // Mode changed (mobile <-> desktop), apply layout change
+                // Temporarily disable transitions to prevent animation on breakpoint change
+                settingsPanel.style.transition = 'none';
+                const controlGroups = settingsPanel.querySelectorAll('.control-group');
+                controlGroups.forEach(el => el.style.transition = 'none');
+                
                 currentMode = newMode;
                 applyMobileStyles();
+                
+                // Re-enable transitions after a frame
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        settingsPanel.style.transition = '';
+                        controlGroups.forEach(el => el.style.transition = '');
+                    });
+                });
             } else {
                 // Same mode, just update position without triggering animation
                 if (currentMode === 'mobile') {

@@ -179,21 +179,6 @@
             box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5), 0 4px 16px rgba(var(--accent-rgb), 0.4);
         }
 
-        #info {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: var(--panel-bg);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid var(--panel-border);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            box-shadow: var(--panel-shadow);
-            font-size: 14px;
-            max-width: 300px;
-        }
-
         /* Loading indicator */
         #loading-overlay {
             position: fixed;
@@ -406,8 +391,8 @@
             #settings {
                 position: absolute;
                 bottom: 20px;
-                right: 20px;
-                left: auto;
+                left: 20px;
+                right: auto;
                 min-width: 380px;
                 border-radius: 8px;
                 max-height: none;
@@ -505,38 +490,6 @@
                 font-size: 14px;
                 flex: 1;
                 min-width: auto;
-            }
-
-            #info {
-                position: fixed;
-                top: 60px;
-                left: 10px;
-                width: auto;
-                max-width: none;
-                bottom: auto;
-                border-radius: 0;
-                padding: 4px 8px;
-                border: none;
-                background: var(--panel-bg);
-                display: flex;
-                gap: 10px;
-                justify-content: flex-start;
-                font-size: 10px;
-                z-index: 198;
-                border-radius: 4px;
-            }
-
-            #info h3 {
-                display: none;
-            }
-
-            #info-text {
-                display: none;
-            }
-
-            #info .stat {
-                margin: 0;
-                display: inline-block;
             }
 
             #settings {
@@ -693,14 +646,10 @@
                 <button id="reset">Reset</button>
             </div>
         </div>
-    </div>
 
-    <div id="info" class="noise-overlay">
-        <h3>Info</h3>
-        <div id="info-text">Click buttons to visualize 3D modeling concepts</div>
-        <div class="stat">Vertices: <strong id="vertex-count">0</strong></div>
-        <div class="stat">Edges: <strong id="edge-count">0</strong></div>
-        <div class="stat">Faces: <strong id="face-count">0</strong></div>
+        <div class="control-group" style="margin-bottom: 0; font-size: 12px; color: var(--text-secondary); text-align: center;">
+            <span>Vertices: <strong id="vertex-count" style="color: var(--text-primary);">0</strong>, Edges: <strong id="edge-count" style="color: var(--text-primary);">0</strong>, Faces: <strong id="face-count" style="color: var(--text-primary);">0</strong></span>
+        </div>
     </div>
 
     <div id="settings" class="noise-overlay">
