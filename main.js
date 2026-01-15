@@ -432,12 +432,7 @@ document.getElementById('shape-select').addEventListener('change', async (e) => 
     }
 
     if (presetModels[currentShape]) {
-        try {
-            await loadPresetModel(currentShape);
-        } catch (error) {
-            console.error('Error loading preset OBJ:', error);
-            alert('Could not load the built-in OBJ model. Please try again.');
-        }
+        await loadPresetModel(currentShape);
         return;
     }
 
@@ -465,9 +460,13 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
                 }
             } catch (error) {
                 console.error('Error loading OBJ:', error);
-                alert('Error loading OBJ file. Make sure it\'s a valid OBJ file.');
             } finally {
                 hideLoading();
+            }
+            
+            // Check if model actually loaded by verifying vertices exist
+            if (!currentGeometry || currentGeometry.attributes.position.count === 0) {
+                alert('Error loading OBJ file. Make sure it\'s a valid OBJ file.');
             }
         };
         reader.readAsText(file);
@@ -498,18 +497,23 @@ async function loadPresetModel(key) {
             preset.baseGeometry = meshChild.geometry.clone();
             preset.baseMaterial = meshChild.material ? meshChild.material.clone() : null;
         } catch (error) {
+            console.error('Error loading OBJ:', error);
+        } finally {
             hideLoading();
-            throw error; // Re-throw to let caller handle it
         }
-        hideLoading();
     }
 
     // Clone before modifying so cached geometry stays pristine
-    currentGeometry = preset.baseGeometry.clone();
+    currentGeometry = preset.baseGeometry ? preset.baseGeometry.clone() : null;
     currentMaterial = preset.baseMaterial ? preset.baseMaterial.clone() : null;
 
     updateGeometry();
     resetScene();
+    
+    // Check if model actually loaded by verifying vertices exist
+    if (!currentGeometry || currentGeometry.attributes.position.count === 0) {
+        alert('Could not load the OBJ model. Please try again.');
+    }
 }
 
 async function loadCustomModelsFromFile() {
@@ -1578,6 +1582,26 @@ if ('serviceWorker' in navigator) {
             }
         }
     });
+
+    // Recenter button functionality
+    const recenterBtn = document.getElementById('recenter-btn');
+    if (recenterBtn) {
+        recenterBtn.addEventListener('click', () => {
+            if (!currentGeometry) return;
+            
+            // Recalculate view based on current model's bounding box
+            const { center, distance } = autoScaleAndPositionModel(currentGeometry);
+            
+            // Update controls target
+            controls.target.copy(center);
+            
+            // Position camera back from the center
+            const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
+            camera.position.copy(center).addScaledVector(cameraDirection, distance);
+            
+            controls.update();
+        });
+    }
     
     console.log('UI initialized with state persistence');
 })();
