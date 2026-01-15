@@ -217,13 +217,8 @@
                 overflow: hidden;
             }
 
-            #settings h3 {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin: 0;
-                padding: 0;
-                font-size: 14px;
+            #settings h3::after {
+                display: none;
             }
 
             #settings .collapse-btn {
@@ -231,12 +226,13 @@
                 border: none;
                 color: rgba(255, 255, 255, 0.7);
                 cursor: pointer;
-                font-size: 16px;
+                font-size: 12px;
                 padding: 0;
                 margin: 0;
                 display: inline-block;
                 transition: transform 0.3s ease;
                 line-height: 1;
+                flex-shrink: 0;
             }
 
             #settings .collapse-btn:hover {
@@ -377,28 +373,34 @@
             }
 
             #settings h3 {
-                display: block;
-                text-align: center;
-                font-size: 13px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
                 margin: 0;
-                padding: 2px 0 10px;
-                opacity: 0.8;
+                padding: 8px 15px;
+                opacity: 0.9;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            }
+
+            #settings h3::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: rgba(255, 255, 255, 0.3);
             }
 
             #settings::before {
-                content: '';
-                display: block;
-                width: 60px;
-                height: 5px;
-                background: rgba(255, 255, 255, 0.5);
-                border-radius: 3px;
-                margin: 10px auto 15px;
-                cursor: pointer;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                display: none;
             }
 
             #settings > * {
                 padding: 0 15px;
+            }
+
+            #settings > .control-group:first-of-type {
+                padding-top: 10px;
             }
 
             #settings > .control-group:last-child {
@@ -518,7 +520,7 @@
     </div>
 
     <div id="settings">
-        <h3>Settings<button class="collapse-btn" id="settings-collapse-btn" title="Collapse">↓</button></h3>
+        <h3><span>Settings</span><button class="collapse-btn" id="settings-collapse-btn" title="Collapse">▼</button></h3>
         
         <div class="control-group">
             <label for="lighting-rotation">Lighting Rotation:

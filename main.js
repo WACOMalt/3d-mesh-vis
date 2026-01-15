@@ -1517,10 +1517,25 @@ if ('serviceWorker' in navigator) {
         });
     }
     
-    // Reapply mobile styles on resize
+    // Track current layout mode to prevent animation on non-mode-changing resizes
+    let currentMode = isMobile() ? 'mobile' : 'desktop';
+    
+    // Reapply mobile styles on resize, but only sync state if mode changed
     window.addEventListener('resize', () => {
         if (settingsPanel) {
-            applyMobileStyles();
+            const newMode = isMobile() ? 'mobile' : 'desktop';
+            if (newMode !== currentMode) {
+                // Mode changed (mobile <-> desktop), apply layout change
+                currentMode = newMode;
+                applyMobileStyles();
+            } else {
+                // Same mode, just update position without triggering animation
+                if (currentMode === 'mobile') {
+                    settingsPanel.style.position = 'fixed';
+                } else {
+                    settingsPanel.style.position = '';
+                }
+            }
         }
     });
     
