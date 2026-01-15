@@ -5,6 +5,23 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/controls';
 import { OBJLoader } from 'three/loaders';
 
+// ===== Loading Overlay Helpers =====
+const loadingOverlay = document.getElementById('loading-overlay');
+const loadingText = loadingOverlay?.querySelector('.loading-text');
+
+function showLoading(message = 'Loading model...') {
+    if (loadingOverlay) {
+        if (loadingText) loadingText.textContent = message;
+        loadingOverlay.classList.add('visible');
+    }
+}
+
+function hideLoading() {
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('visible');
+    }
+}
+
 // ===== Scene Setup =====
 const scene = new THREE.Scene();
 
@@ -431,6 +448,7 @@ document.getElementById('shape-select').addEventListener('change', async (e) => 
 document.getElementById('obj-file').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
+        showLoading('Loading OBJ file...');
         const reader = new FileReader();
         reader.onload = (event) => {
             const objLoader = new OBJLoader();
@@ -448,6 +466,8 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
             } catch (error) {
                 console.error('Error loading OBJ:', error);
                 alert('Error loading OBJ file. Make sure it\'s a valid OBJ file.');
+            } finally {
+                hideLoading();
             }
         };
         reader.readAsText(file);
@@ -459,22 +479,27 @@ async function loadPresetModel(key) {
     if (!preset) return;
 
     if (!preset.baseGeometry) {
-        const response = await fetch(preset.path);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ${preset.path}: ${response.status}`);
+        showLoading('Loading model...');
+        try {
+            const response = await fetch(preset.path);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${preset.path}: ${response.status}`);
+            }
+
+            const objText = await response.text();
+            const objLoader = new OBJLoader();
+            const object = objLoader.parse(objText);
+            const meshChild = object.children.find(child => child.isMesh) || object.children[0];
+
+            if (!meshChild || !meshChild.geometry) {
+                throw new Error('No mesh geometry found in OBJ file.');
+            }
+
+            preset.baseGeometry = meshChild.geometry.clone();
+            preset.baseMaterial = meshChild.material ? meshChild.material.clone() : null;
+        } finally {
+            hideLoading();
         }
-
-        const objText = await response.text();
-        const objLoader = new OBJLoader();
-        const object = objLoader.parse(objText);
-        const meshChild = object.children.find(child => child.isMesh) || object.children[0];
-
-        if (!meshChild || !meshChild.geometry) {
-            throw new Error('No mesh geometry found in OBJ file.');
-        }
-
-        preset.baseGeometry = meshChild.geometry.clone();
-        preset.baseMaterial = meshChild.material ? meshChild.material.clone() : null;
     }
 
     // Clone before modifying so cached geometry stays pristine
