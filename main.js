@@ -307,14 +307,9 @@ const shapeGeometries = {
     sphere: () => new THREE.SphereGeometry(1, 16, 16)
 };
 
-// Built-in OBJ models served with the app
-const presetModels = {
-    teapot: {
-        path: 'models/teapot.obj',
-        baseGeometry: null,
-        baseMaterial: null
-    }
-};
+// Built-in/custom OBJ models served with the app (populated from models.json)
+const presetModels = {};
+const customModelListPath = 'models/models.json';
 
 // ===== Lighting Configuration =====
 let lightingRotation = 180;
@@ -402,6 +397,7 @@ console.log('Initializing...');
 console.log('vertex-size input element:', document.getElementById('vertex-size'));
 updateGeometry();
 rotateLights(lightingRotation);
+loadCustomModelsFromFile();
 
 // ===== Event Listeners =====
 document.getElementById('shape-select').addEventListener('change', async (e) => {
@@ -487,6 +483,46 @@ async function loadPresetModel(key) {
 
     updateGeometry();
     resetScene();
+}
+
+async function loadCustomModelsFromFile() {
+    try {
+        const response = await fetch(customModelListPath);
+        if (!response.ok) {
+            console.warn(`Custom model list not found: ${customModelListPath} (${response.status})`);
+            return;
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+            console.warn('models.json must be an array of { id, title, path }');
+            return;
+        }
+
+        const selectEl = document.getElementById('shape-select');
+
+        data.forEach((item) => {
+            if (!item || !item.id || !item.path) return;
+            const id = String(item.id);
+            const title = item.title ? String(item.title) : id;
+            const path = String(item.path);
+
+            // Skip duplicates
+            if (presetModels[id]) return;
+
+            presetModels[id] = {
+                path,
+                baseGeometry: null,
+                baseMaterial: null
+            };
+
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = title;
+            selectEl.appendChild(option);
+        });
+    } catch (error) {
+        console.warn('Failed to load custom models list:', error);
+    }
 }
 
 document.getElementById('show-vertices').addEventListener('click', showVertices);
