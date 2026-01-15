@@ -1457,37 +1457,40 @@ if ('serviceWorker' in navigator) {
 // ===== Mobile Settings Panel Toggle =====
 (function initMobileUI() {
     const settingsPanel = document.getElementById('settings');
+    const isMobile = () => window.innerHeight < 500;
+    
+    function applyMobileStyles() {
+        if (isMobile()) {
+            settingsPanel.style.position = 'fixed';
+        } else {
+            settingsPanel.style.position = 'relative';
+            settingsPanel.classList.remove('expanded');
+        }
+    }
     
     if (settingsPanel) {
-        // Click handle to toggle settings panel on mobile
+        // Apply styles on load
+        applyMobileStyles();
+        
+        // Click handler to toggle settings panel on mobile
         settingsPanel.addEventListener('click', (e) => {
-            // Only toggle if it's not a form element or button that should work normally
             const target = e.target;
             if (target.tagName === 'INPUT' || target.tagName === 'BUTTON') {
                 return; // Let form elements work normally
             }
             
-            // For mobile, use the ::before pseudo-element area (visual handle)
-            // Check if we're on mobile first
-            if (window.innerHeight < 500) {
+            if (isMobile()) {
                 settingsPanel.classList.toggle('expanded');
             }
         });
-        
-        // Add a touch-friendly handle area - click anywhere on the top area to toggle
-        const handleArea = document.createElement('div');
-        handleArea.style.cssText = 'display: none; position: absolute; top: 0; left: 0; right: 0; height: 40px; cursor: pointer; z-index: 1;';
-        
-        // Only show on mobile
-        if (window.innerHeight < 500) {
-            handleArea.style.display = 'block';
-            settingsPanel.style.position = 'fixed';
-            handleArea.addEventListener('click', () => {
-                settingsPanel.classList.toggle('expanded');
-            });
-            settingsPanel.insertBefore(handleArea, settingsPanel.firstChild);
-        }
     }
     
-    console.log('Mobile UI initialized');
+    // Reapply mobile styles on resize
+    window.addEventListener('resize', () => {
+        if (settingsPanel) {
+            applyMobileStyles();
+        }
+    });
+    
+    console.log('Mobile UI initialized with resize detection');
 })();
