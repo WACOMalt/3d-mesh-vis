@@ -1,11 +1,14 @@
-const CACHE_NAME = 'mesh-visualizer-v1';
+const CACHE_NAME = 'mesh-visualizer-v2';
 const BASE_PATH = self.registration.scope;
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + 'index.html',
   BASE_PATH + 'main.js',
   BASE_PATH + 'gsap.min.js',
-  BASE_PATH + 'manifest.json'
+  BASE_PATH + 'manifest.json',
+  BASE_PATH + 'fonts/Inter-Regular.woff2',
+  BASE_PATH + 'fonts/Inter-Medium.woff2',
+  BASE_PATH + 'fonts/Inter-SemiBold.woff2'
 ];
 
 // Install event
