@@ -81,7 +81,6 @@
 
         .button-group {
             display: flex;
-            flex-direction: column;
             gap: 8px;
         }
 
@@ -95,6 +94,7 @@
             font-size: 14px;
             font-weight: bold;
             transition: background 0.3s;
+            flex: 1;
         }
 
         button:hover {
@@ -193,220 +193,180 @@
         }
 
         /* ===== MOBILE PORTRAIT STYLES ===== */
-        @media (max-aspect-ratio: 1/1) and (max-width: 768px) {
+        @media (max-height: 500px) {
             body {
                 overflow-y: auto;
             }
 
-            #canvas-container {
-                position: sticky;
+            #controls {
+                position: fixed;
                 top: 0;
-                height: 100vh;
-                z-index: 1;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: none;
+                border-radius: 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 8px;
+                margin: 0;
+                z-index: 200;
             }
 
-            /* Hide desktop controls panel on portrait */
-            #controls {
+            .control-group {
+                margin-bottom: 8px;
+            }
+
+            #controls h3 {
                 display: none;
             }
 
-            /* Mobile Top Bar */
-            #mobile-top-bar {
-                display: flex;
-                flex-direction: column;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 200;
-                background: rgba(0, 0, 0, 0.9);
-                padding: 8px 10px;
-                gap: 8px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            #controls > .control-group:nth-child(2),
+            #controls > .control-group:nth-child(3) {
+                margin-bottom: 6px;
             }
 
-            #mobile-top-bar .model-row {
-                display: flex;
-                align-items: center;
-                gap: 8px;
+            #controls label {
+                display: none;
             }
 
-            #mobile-top-bar .model-row label {
-                margin: 0;
-                font-size: 12px;
-                white-space: nowrap;
-            }
-
-            #mobile-top-bar .model-row select {
-                flex: 1;
+            #controls select {
                 padding: 6px 8px;
-                font-size: 13px;
+                font-size: 12px;
             }
 
-            #mobile-top-bar .viz-buttons {
-                display: flex;
-                gap: 6px;
+            #controls input[type="file"] {
+                display: none;
             }
 
-            #mobile-top-bar .viz-buttons button {
-                flex: 1;
-                padding: 8px 4px;
+            .button-group {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .button-group button {
+                padding: 6px 8px;
                 font-size: 11px;
-                min-width: 0;
-                white-space: nowrap;
+                flex: 1;
+                min-width: 70px;
             }
 
-            /* Mobile Info Bar - right after top bar */
-            #mobile-info-bar {
-                display: flex;
+            #info {
                 position: fixed;
-                top: 90px;
+                top: 50px;
                 left: 0;
                 right: 0;
-                z-index: 199;
-                background: rgba(0, 0, 0, 0.75);
+                width: 100%;
+                max-width: none;
+                bottom: auto;
+                border-radius: 0;
                 padding: 6px 10px;
+                border: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(0, 0, 0, 0.75);
+                display: flex;
                 gap: 12px;
                 justify-content: center;
                 font-size: 11px;
+                z-index: 199;
             }
 
-            #mobile-info-bar .stat {
+            #info h3 {
+                display: none;
+            }
+
+            #info-text {
+                display: none;
+            }
+
+            #info .stat {
                 margin: 0;
-                color: #bbb;
+                display: inline-block;
             }
 
-            #mobile-info-bar .stat strong {
-                color: #fff;
-            }
-
-            /* Hide desktop info panel */
-            #info {
-                display: none;
-            }
-
-            /* Hide desktop settings */
             #settings {
-                display: none;
-            }
-
-            /* Mobile Bottom Panel */
-            #mobile-bottom-panel {
-                display: block;
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
+                width: 100%;
+                max-width: none;
+                border-radius: 16px 16px 0 0;
                 z-index: 300;
                 background: rgba(0, 0, 0, 0.95);
-                border-top-left-radius: 16px;
-                border-top-right-radius: 16px;
-                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-                transform: translateY(calc(100% - 50px));
-                transition: transform 0.3s ease;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-bottom: none;
                 max-height: 70vh;
                 overflow-y: auto;
+                transform: translateY(calc(100% - 40px));
+                transition: transform 0.3s ease;
+                padding: 0;
             }
 
-            #mobile-bottom-panel.expanded {
+            #settings.expanded {
                 transform: translateY(0);
             }
 
-            #mobile-bottom-panel .panel-handle {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                padding: 12px;
-                cursor: pointer;
-                position: sticky;
-                top: 0;
-                background: rgba(0, 0, 0, 0.95);
-                z-index: 1;
+            #settings h3 {
+                display: none;
             }
 
-            #mobile-bottom-panel .panel-handle::before {
+            #settings::before {
                 content: '';
                 display: block;
                 width: 40px;
                 height: 4px;
                 background: rgba(255, 255, 255, 0.3);
                 border-radius: 2px;
+                margin: 8px auto 12px;
             }
 
-            #mobile-bottom-panel .panel-handle-text {
-                position: absolute;
+            #settings > * {
+                padding: 0 15px;
+            }
+
+            #settings > .control-group:last-child {
+                padding-bottom: 30px;
+            }
+
+            #settings > .control-group {
+                margin-bottom: 10px;
+            }
+
+            .control-group label {
                 font-size: 12px;
-                color: #888;
-                text-transform: uppercase;
-                letter-spacing: 1px;
+                display: block;
             }
 
-            #mobile-bottom-panel .panel-content {
-                padding: 0 15px 30px 15px;
+            #settings input[type="range"]::-webkit-slider-thumb {
+                width: 20px;
+                height: 20px;
             }
 
-            #mobile-bottom-panel .control-group {
-                margin-bottom: 12px;
+            #settings input[type="range"]::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
             }
 
-            #mobile-bottom-panel label {
-                font-size: 13px;
-                margin-bottom: 6px;
-            }
-
-            #mobile-bottom-panel .settings-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-
-            #mobile-bottom-panel .settings-grid .control-group {
-                margin-bottom: 8px;
-            }
-
-            #mobile-bottom-panel button {
-                padding: 10px 12px;
-                font-size: 12px;
-            }
-
-            #mobile-bottom-panel .toggle-row {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-
-            #mobile-bottom-panel .toggle-row button {
-                flex: 1;
-                min-width: 100px;
-            }
-
-            /* Color input styling for mobile */
-            #mobile-bottom-panel input[type="color"] {
+            #settings input[type="color"] {
                 width: 50px;
                 height: 36px;
             }
 
-            /* Slider touch targets */
-            #mobile-bottom-panel input[type="range"] {
-                height: 8px;
+            #settings button {
+                padding: 8px 12px;
+                font-size: 12px;
             }
 
-            #mobile-bottom-panel input[type="range"]::-webkit-slider-thumb {
-                width: 22px;
-                height: 22px;
+            #canvas-container {
+                margin-top: 85px;
+                height: calc(100vh - 85px);
             }
 
-            #mobile-bottom-panel input[type="range"]::-moz-range-thumb {
-                width: 22px;
-                height: 22px;
+            #settings::after {
+                content: '';
+                display: block;
+                height: 30px;
             }
-        }
-
-        /* Show mobile elements by default is hidden (for desktop) */
-        #mobile-top-bar,
-        #mobile-info-bar,
-        #mobile-bottom-panel {
-            display: none;
         }
     </style>
 </head>
@@ -422,82 +382,6 @@
 
     <div id="canvas-container"></div>
 
-    <!-- ===== MOBILE TOP BAR ===== -->
-    <div id="mobile-top-bar">
-        <div class="model-row">
-            <label for="mobile-shape-select">Model:</label>
-            <select id="mobile-shape-select">
-                <option value="cube">Cube</option>
-                <option value="cylinder">Cylinder</option>
-                <option value="cone">Cone</option>
-                <option value="sphere">Sphere</option>
-                <option value="obj">Load OBJ...</option>
-            </select>
-            <button id="mobile-reset" style="padding: 6px 12px; font-size: 12px;">Reset</button>
-        </div>
-        <div class="viz-buttons">
-            <button id="mobile-show-vertices">Vertices</button>
-            <button id="mobile-connect-edges">Edges</button>
-            <button id="mobile-form-faces">Faces</button>
-            <button id="mobile-assemble-mesh">Mesh</button>
-        </div>
-    </div>
-
-    <!-- ===== MOBILE INFO BAR ===== -->
-    <div id="mobile-info-bar">
-        <div class="stat">V: <strong id="mobile-vertex-count">0</strong></div>
-        <div class="stat">E: <strong id="mobile-edge-count">0</strong></div>
-        <div class="stat">F: <strong id="mobile-face-count">0</strong></div>
-    </div>
-
-    <!-- ===== MOBILE BOTTOM PANEL ===== -->
-    <div id="mobile-bottom-panel">
-        <div class="panel-handle" id="mobile-panel-handle">
-            <span class="panel-handle-text">Settings</span>
-        </div>
-        <div class="panel-content">
-            <div class="settings-grid">
-                <div class="control-group">
-                    <label for="mobile-lighting-rotation">Light Rotation:
-                        <span class="slider-value" id="mobile-lighting-rotation-value">180°</span>
-                    </label>
-                    <input type="range" id="mobile-lighting-rotation" min="0" max="360" value="180">
-                </div>
-                <div class="control-group">
-                    <label for="mobile-skybox-rotation">Skybox Rotation:
-                        <span class="slider-value" id="mobile-skybox-rotation-value">212°</span>
-                    </label>
-                    <input type="range" id="mobile-skybox-rotation" min="0" max="360" value="212">
-                </div>
-                <div class="control-group">
-                    <label for="mobile-vertex-size">Vertex Size:
-                        <span class="slider-value" id="mobile-vertex-size-value">0.05</span>
-                    </label>
-                    <input type="range" id="mobile-vertex-size" min="0.01" max="0.1" value="0.05" step="any">
-                </div>
-                <div class="control-group">
-                    <label for="mobile-animation-max-time">Animation:
-                        <span class="slider-value" id="mobile-animation-max-time-value">2s</span>
-                    </label>
-                    <input type="range" id="mobile-animation-max-time" min="0" max="10" value="2" step="any">
-                </div>
-            </div>
-            <div class="toggle-row">
-                <button id="mobile-toggle-floor-helpers">Grid</button>
-                <button id="mobile-toggle-background">Skybox</button>
-                <button id="mobile-toggle-skybox-bottom" style="background: rgba(108, 117, 125, 0.8);">Sky Floor</button>
-            </div>
-            <div class="control-group center-content" style="margin-top: 12px;">
-                <label for="mobile-bg-color">Background:</label>
-                <input type="color" id="mobile-bg-color" value="#333333" style="width: 60px; height: 40px; cursor: pointer; border: none; border-radius: 4px;">
-            </div>
-            <div class="control-group center-content" style="margin-top: 12px;">
-                <button id="mobile-settings-reset">Reset All Settings</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== DESKTOP CONTROLS ===== -->
     <div id="controls">
         <div class="control-group">
             <h3>3D Mesh Visualizer</h3>
@@ -521,10 +405,10 @@
         <div class="control-group">
             <label>Visualization Steps:</label>
             <div class="button-group">
-                <button id="show-vertices">Show Vertices</button>
-                <button id="connect-edges">Show Edges</button>
-                <button id="form-faces">Show Faces</button>
-                <button id="assemble-mesh">Show Assembled Mesh</button>
+                <button id="show-vertices">Vertices</button>
+                <button id="connect-edges">Edges</button>
+                <button id="form-faces">Faces</button>
+                <button id="assemble-mesh">Mesh</button>
                 <button id="reset">Reset</button>
             </div>
         </div>
@@ -546,22 +430,20 @@
                 <span class="slider-value" id="lighting-rotation-value">180°</span>
             </label>
             <input type="range" id="lighting-rotation" min="0" max="360" value="180">
+        </div>
 
-                <div class="control-group">
-                    <label for="skybox-rotation">Skybox Rotation:
-                        <span class="slider-value" id="skybox-rotation-value">212°</span>
-                    </label>
-                    <input type="range" id="skybox-rotation" min="0" max="360" value="212">
-                </div>
+        <div class="control-group">
+            <label for="skybox-rotation">Skybox Rotation:
+                <span class="slider-value" id="skybox-rotation-value">212°</span>
+            </label>
+            <input type="range" id="skybox-rotation" min="0" max="360" value="212">
         </div>
 
         <div class="control-group">
             <label for="vertex-size">Vertex Size:
                 <span class="slider-value" id="vertex-size-value">0.05</span>
             </label>
-            <div>
-                <input type="range" id="vertex-size" min="0.01" max="0.1" value="0.05" step="any">
-            </div>
+            <input type="range" id="vertex-size" min="0.01" max="0.1" value="0.05" step="any">
         </div>
 
         <div class="control-group">
