@@ -1459,17 +1459,35 @@ if ('serviceWorker' in navigator) {
     const settingsPanel = document.getElementById('settings');
     const isMobile = () => window.innerWidth <= 535;
     
+    // Track collapsed/expanded state independently from display mode
+    let isCollapsed = false;
+    
+    function syncPanelState() {
+        // Apply the user's preference (collapsed or not) based on current layout
+        if (isCollapsed) {
+            settingsPanel.classList.add('collapsed');
+            settingsPanel.classList.remove('expanded');
+        } else {
+            settingsPanel.classList.remove('collapsed');
+            settingsPanel.classList.add('expanded');
+        }
+    }
+    
     function applyMobileStyles() {
         if (isMobile()) {
             settingsPanel.style.position = 'fixed';
         } else {
             // In desktop mode, let CSS handle positioning (don't override with inline styles)
             settingsPanel.style.position = '';
-            settingsPanel.classList.remove('expanded');
         }
+        // Sync the panel state after layout change
+        syncPanelState();
     }
     
     if (settingsPanel) {
+        // Start with panel open by default
+        isCollapsed = false;
+        
         // Apply styles on load
         applyMobileStyles();
         
@@ -1479,7 +1497,8 @@ if ('serviceWorker' in navigator) {
             collapseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!isMobile()) {
-                    settingsPanel.classList.toggle('collapsed');
+                    isCollapsed = !isCollapsed;
+                    syncPanelState();
                 }
             });
         }
@@ -1491,8 +1510,9 @@ if ('serviceWorker' in navigator) {
                 return; // Let form elements work normally
             }
             
-            if (isMobile()) {
-                settingsPanel.classList.toggle('expanded');
+            if (isMobile() && !e.target.classList.contains('collapse-btn')) {
+                isCollapsed = !isCollapsed;
+                syncPanelState();
             }
         });
     }
@@ -1504,5 +1524,5 @@ if ('serviceWorker' in navigator) {
         }
     });
     
-    console.log('UI initialized with mobile/desktop detection');
+    console.log('UI initialized with state persistence');
 })();
