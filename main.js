@@ -1516,8 +1516,8 @@ if ('serviceWorker' in navigator) {
     }
     
     if (settingsPanel) {
-        // Start with panel open by default
-        isCollapsed = false;
+        // Start with panel closed on mobile, open on desktop
+        isCollapsed = isMobile();
         
         // Apply styles on load
         applyMobileStyles();
