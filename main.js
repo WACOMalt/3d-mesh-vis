@@ -1496,21 +1496,21 @@ if ('serviceWorker' in navigator) {
         if (collapseBtn) {
             collapseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (!isMobile()) {
-                    isCollapsed = !isCollapsed;
-                    syncPanelState();
-                }
+                // Allow collapse button to work on both mobile and desktop
+                isCollapsed = !isCollapsed;
+                syncPanelState();
             });
         }
         
-        // Click handler to toggle settings panel on mobile
+        // Click handler to toggle settings panel on mobile (anywhere on the header except the button)
         settingsPanel.addEventListener('click', (e) => {
             const target = e.target;
             if (target.tagName === 'INPUT' || target.tagName === 'BUTTON') {
-                return; // Let form elements work normally
+                return; // Let form elements and the collapse button work normally
             }
             
-            if (isMobile() && !e.target.classList.contains('collapse-btn')) {
+            // Allow clicking the header area (on the "Settings" text) to toggle on mobile
+            if (isMobile()) {
                 isCollapsed = !isCollapsed;
                 syncPanelState();
             }
