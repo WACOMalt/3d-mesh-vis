@@ -10,7 +10,7 @@ from mathutils import Vector
 
 # Get script directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
-obj_path = os.path.join(script_dir, 'teapot.obj')
+obj_path = os.path.join(script_dir, 'models', 'teapot.obj')
 
 # Clear default objects
 bpy.ops.object.select_all(action='SELECT')

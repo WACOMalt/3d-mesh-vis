@@ -307,6 +307,15 @@ const shapeGeometries = {
     sphere: () => new THREE.SphereGeometry(1, 16, 16)
 };
 
+// Built-in OBJ models served with the app
+const presetModels = {
+    teapot: {
+        path: 'models/teapot.obj',
+        baseGeometry: null,
+        baseMaterial: null
+    }
+};
+
 // ===== Lighting Configuration =====
 let lightingRotation = 180;
 let skyboxRotation = 212;
@@ -395,14 +404,32 @@ updateGeometry();
 rotateLights(lightingRotation);
 
 // ===== Event Listeners =====
-document.getElementById('shape-select').addEventListener('change', (e) => {
+document.getElementById('shape-select').addEventListener('change', async (e) => {
     currentShape = e.target.value;
+
+    // Reset any OBJ-specific material when switching to primitives
+    if (!presetModels[currentShape] && currentShape !== 'obj') {
+        currentGeometry = null;
+        currentMaterial = null;
+    }
+
     if (currentShape === 'obj') {
         document.getElementById('obj-file').click();
-    } else {
-        updateGeometry();
-        resetScene();
+        return;
     }
+
+    if (presetModels[currentShape]) {
+        try {
+            await loadPresetModel(currentShape);
+        } catch (error) {
+            console.error('Error loading preset OBJ:', error);
+            alert('Could not load the built-in OBJ model. Please try again.');
+        }
+        return;
+    }
+
+    updateGeometry();
+    resetScene();
 });
 
 document.getElementById('obj-file').addEventListener('change', (e) => {
@@ -430,6 +457,37 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
         reader.readAsText(file);
     }
 });
+
+async function loadPresetModel(key) {
+    const preset = presetModels[key];
+    if (!preset) return;
+
+    if (!preset.baseGeometry) {
+        const response = await fetch(preset.path);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${preset.path}: ${response.status}`);
+        }
+
+        const objText = await response.text();
+        const objLoader = new OBJLoader();
+        const object = objLoader.parse(objText);
+        const meshChild = object.children.find(child => child.isMesh) || object.children[0];
+
+        if (!meshChild || !meshChild.geometry) {
+            throw new Error('No mesh geometry found in OBJ file.');
+        }
+
+        preset.baseGeometry = meshChild.geometry.clone();
+        preset.baseMaterial = meshChild.material ? meshChild.material.clone() : null;
+    }
+
+    // Clone before modifying so cached geometry stays pristine
+    currentGeometry = preset.baseGeometry.clone();
+    currentMaterial = preset.baseMaterial ? preset.baseMaterial.clone() : null;
+
+    updateGeometry();
+    resetScene();
+}
 
 document.getElementById('show-vertices').addEventListener('click', showVertices);
 document.getElementById('connect-edges').addEventListener('click', connectEdges);
@@ -685,10 +743,17 @@ function autoScaleAndPositionModel(geometry) {
 }
 
 function updateGeometry() {
-    if (currentShape === 'obj') {
-        if (!currentGeometry) return;
-    } else {
-        currentGeometry = shapeGeometries[currentShape]();
+    if (!currentGeometry) {
+        const shapeFactory = shapeGeometries[currentShape];
+        if (shapeFactory) {
+            currentGeometry = shapeFactory();
+            currentMaterial = null;
+        } else if (currentShape === 'obj') {
+            return;
+        } else {
+            console.warn('No geometry factory found for shape:', currentShape);
+            return;
+        }
     }
     // Apply auto-scaling and floor positioning to all geometries
     const result = autoScaleAndPositionModel(currentGeometry);
