@@ -1454,8 +1454,8 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker registration failed:', err));
 }
 
-// ===== Mobile Settings Panel Toggle =====
-(function initMobileUI() {
+// ===== Mobile & Desktop UI Management =====
+(function initUI() {
     const settingsPanel = document.getElementById('settings');
     const isMobile = () => window.innerWidth <= 535;
     
@@ -1472,6 +1472,17 @@ if ('serviceWorker' in navigator) {
     if (settingsPanel) {
         // Apply styles on load
         applyMobileStyles();
+        
+        // Desktop collapse button handler
+        const collapseBtn = document.getElementById('settings-collapse-btn');
+        if (collapseBtn) {
+            collapseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!isMobile()) {
+                    settingsPanel.classList.toggle('collapsed');
+                }
+            });
+        }
         
         // Click handler to toggle settings panel on mobile
         settingsPanel.addEventListener('click', (e) => {
@@ -1493,5 +1504,5 @@ if ('serviceWorker' in navigator) {
         }
     });
     
-    console.log('Mobile UI initialized with resize detection');
+    console.log('UI initialized with mobile/desktop detection');
 })();
