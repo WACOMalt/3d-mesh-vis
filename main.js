@@ -1457,7 +1457,7 @@ if ('serviceWorker' in navigator) {
 // ===== Mobile Settings Panel Toggle =====
 (function initMobileUI() {
     const settingsPanel = document.getElementById('settings');
-    const isMobile = () => window.innerWidth <= 768;
+    const isMobile = () => window.innerWidth <= 485;
     
     function applyMobileStyles() {
         if (isMobile()) {
