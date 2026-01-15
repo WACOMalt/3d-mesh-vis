@@ -365,6 +365,26 @@
                 font-size: 12px;
             }
 
+            #settings > .control-group:nth-child(10),
+            #settings > .control-group:nth-child(11),
+            #settings > .control-group:nth-child(12) {
+                display: inline-block;
+                width: calc(33.333% - 10px);
+                margin-right: 15px;
+                margin-bottom: 10px;
+                vertical-align: top;
+            }
+
+            #settings > .control-group:nth-child(12) {
+                margin-right: 0;
+            }
+
+            #settings > .control-group:nth-child(10) button,
+            #settings > .control-group:nth-child(11) button,
+            #settings > .control-group:nth-child(12) button {
+                width: 100%;
+            }
+
             #canvas-container {
                 margin-top: 60px;
                 height: calc(100vh - 60px);
