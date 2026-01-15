@@ -497,9 +497,11 @@ async function loadPresetModel(key) {
 
             preset.baseGeometry = meshChild.geometry.clone();
             preset.baseMaterial = meshChild.material ? meshChild.material.clone() : null;
-        } finally {
+        } catch (error) {
             hideLoading();
+            throw error; // Re-throw to let caller handle it
         }
+        hideLoading();
     }
 
     // Clone before modifying so cached geometry stays pristine
