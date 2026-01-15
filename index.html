@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="Interactive 3D visualization tool for exploring vertices, edges, faces, and mesh assembly">
     <meta name="theme-color" content="#007bff">
     <meta name="mobile-web-app-capable" content="yes">
@@ -191,6 +191,223 @@
             font-size: 14px;
             max-width: 300px;
         }
+
+        /* ===== MOBILE PORTRAIT STYLES ===== */
+        @media (max-aspect-ratio: 1/1) and (max-width: 768px) {
+            body {
+                overflow-y: auto;
+            }
+
+            #canvas-container {
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                z-index: 1;
+            }
+
+            /* Hide desktop controls panel on portrait */
+            #controls {
+                display: none;
+            }
+
+            /* Mobile Top Bar */
+            #mobile-top-bar {
+                display: flex;
+                flex-direction: column;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 200;
+                background: rgba(0, 0, 0, 0.9);
+                padding: 8px 10px;
+                gap: 8px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            #mobile-top-bar .model-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            #mobile-top-bar .model-row label {
+                margin: 0;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            #mobile-top-bar .model-row select {
+                flex: 1;
+                padding: 6px 8px;
+                font-size: 13px;
+            }
+
+            #mobile-top-bar .viz-buttons {
+                display: flex;
+                gap: 6px;
+            }
+
+            #mobile-top-bar .viz-buttons button {
+                flex: 1;
+                padding: 8px 4px;
+                font-size: 11px;
+                min-width: 0;
+                white-space: nowrap;
+            }
+
+            /* Mobile Info Bar - right after top bar */
+            #mobile-info-bar {
+                display: flex;
+                position: fixed;
+                top: 90px;
+                left: 0;
+                right: 0;
+                z-index: 199;
+                background: rgba(0, 0, 0, 0.75);
+                padding: 6px 10px;
+                gap: 12px;
+                justify-content: center;
+                font-size: 11px;
+            }
+
+            #mobile-info-bar .stat {
+                margin: 0;
+                color: #bbb;
+            }
+
+            #mobile-info-bar .stat strong {
+                color: #fff;
+            }
+
+            /* Hide desktop info panel */
+            #info {
+                display: none;
+            }
+
+            /* Hide desktop settings */
+            #settings {
+                display: none;
+            }
+
+            /* Mobile Bottom Panel */
+            #mobile-bottom-panel {
+                display: block;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 300;
+                background: rgba(0, 0, 0, 0.95);
+                border-top-left-radius: 16px;
+                border-top-right-radius: 16px;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+                transform: translateY(calc(100% - 50px));
+                transition: transform 0.3s ease;
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+
+            #mobile-bottom-panel.expanded {
+                transform: translateY(0);
+            }
+
+            #mobile-bottom-panel .panel-handle {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 12px;
+                cursor: pointer;
+                position: sticky;
+                top: 0;
+                background: rgba(0, 0, 0, 0.95);
+                z-index: 1;
+            }
+
+            #mobile-bottom-panel .panel-handle::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
+            }
+
+            #mobile-bottom-panel .panel-handle-text {
+                position: absolute;
+                font-size: 12px;
+                color: #888;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            #mobile-bottom-panel .panel-content {
+                padding: 0 15px 30px 15px;
+            }
+
+            #mobile-bottom-panel .control-group {
+                margin-bottom: 12px;
+            }
+
+            #mobile-bottom-panel label {
+                font-size: 13px;
+                margin-bottom: 6px;
+            }
+
+            #mobile-bottom-panel .settings-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            #mobile-bottom-panel .settings-grid .control-group {
+                margin-bottom: 8px;
+            }
+
+            #mobile-bottom-panel button {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            #mobile-bottom-panel .toggle-row {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            #mobile-bottom-panel .toggle-row button {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            /* Color input styling for mobile */
+            #mobile-bottom-panel input[type="color"] {
+                width: 50px;
+                height: 36px;
+            }
+
+            /* Slider touch targets */
+            #mobile-bottom-panel input[type="range"] {
+                height: 8px;
+            }
+
+            #mobile-bottom-panel input[type="range"]::-webkit-slider-thumb {
+                width: 22px;
+                height: 22px;
+            }
+
+            #mobile-bottom-panel input[type="range"]::-moz-range-thumb {
+                width: 22px;
+                height: 22px;
+            }
+        }
+
+        /* Show mobile elements by default is hidden (for desktop) */
+        #mobile-top-bar,
+        #mobile-info-bar,
+        #mobile-bottom-panel {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -205,6 +422,82 @@
 
     <div id="canvas-container"></div>
 
+    <!-- ===== MOBILE TOP BAR ===== -->
+    <div id="mobile-top-bar">
+        <div class="model-row">
+            <label for="mobile-shape-select">Model:</label>
+            <select id="mobile-shape-select">
+                <option value="cube">Cube</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="cone">Cone</option>
+                <option value="sphere">Sphere</option>
+                <option value="obj">Load OBJ...</option>
+            </select>
+            <button id="mobile-reset" style="padding: 6px 12px; font-size: 12px;">Reset</button>
+        </div>
+        <div class="viz-buttons">
+            <button id="mobile-show-vertices">Vertices</button>
+            <button id="mobile-connect-edges">Edges</button>
+            <button id="mobile-form-faces">Faces</button>
+            <button id="mobile-assemble-mesh">Mesh</button>
+        </div>
+    </div>
+
+    <!-- ===== MOBILE INFO BAR ===== -->
+    <div id="mobile-info-bar">
+        <div class="stat">V: <strong id="mobile-vertex-count">0</strong></div>
+        <div class="stat">E: <strong id="mobile-edge-count">0</strong></div>
+        <div class="stat">F: <strong id="mobile-face-count">0</strong></div>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM PANEL ===== -->
+    <div id="mobile-bottom-panel">
+        <div class="panel-handle" id="mobile-panel-handle">
+            <span class="panel-handle-text">Settings</span>
+        </div>
+        <div class="panel-content">
+            <div class="settings-grid">
+                <div class="control-group">
+                    <label for="mobile-lighting-rotation">Light Rotation:
+                        <span class="slider-value" id="mobile-lighting-rotation-value">180°</span>
+                    </label>
+                    <input type="range" id="mobile-lighting-rotation" min="0" max="360" value="180">
+                </div>
+                <div class="control-group">
+                    <label for="mobile-skybox-rotation">Skybox Rotation:
+                        <span class="slider-value" id="mobile-skybox-rotation-value">212°</span>
+                    </label>
+                    <input type="range" id="mobile-skybox-rotation" min="0" max="360" value="212">
+                </div>
+                <div class="control-group">
+                    <label for="mobile-vertex-size">Vertex Size:
+                        <span class="slider-value" id="mobile-vertex-size-value">0.05</span>
+                    </label>
+                    <input type="range" id="mobile-vertex-size" min="0.01" max="0.1" value="0.05" step="any">
+                </div>
+                <div class="control-group">
+                    <label for="mobile-animation-max-time">Animation:
+                        <span class="slider-value" id="mobile-animation-max-time-value">2s</span>
+                    </label>
+                    <input type="range" id="mobile-animation-max-time" min="0" max="10" value="2" step="any">
+                </div>
+            </div>
+            <div class="toggle-row">
+                <button id="mobile-toggle-floor-helpers">Grid</button>
+                <button id="mobile-toggle-background">Skybox</button>
+                <button id="mobile-toggle-skybox-bottom" style="background: rgba(108, 117, 125, 0.8);">Sky Floor</button>
+            </div>
+            <div class="control-group center-content" style="margin-top: 12px;">
+                <label for="mobile-bg-color">Background:</label>
+                <input type="color" id="mobile-bg-color" value="#333333" style="width: 60px; height: 40px; cursor: pointer; border: none; border-radius: 4px;">
+            </div>
+            <div class="control-group center-content" style="margin-top: 12px;">
+                <button id="mobile-settings-reset">Reset All Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== DESKTOP CONTROLS ===== -->
     <div id="controls">
         <div class="control-group">
             <h3>3D Mesh Visualizer</h3>

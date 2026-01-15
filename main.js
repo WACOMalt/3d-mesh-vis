@@ -1470,3 +1470,256 @@ if ('serviceWorker' in navigator) {
         .then(reg => console.log('Service Worker registered with scope:', reg.scope))
         .catch(err => console.log('Service Worker registration failed:', err));
 }
+
+// ===== Mobile UI Support =====
+(function initMobileUI() {
+    // Mobile bottom panel toggle
+    const bottomPanel = document.getElementById('mobile-bottom-panel');
+    const panelHandle = document.getElementById('mobile-panel-handle');
+    
+    if (panelHandle && bottomPanel) {
+        panelHandle.addEventListener('click', () => {
+            bottomPanel.classList.toggle('expanded');
+        });
+        
+        // Swipe gesture support
+        let startY = 0;
+        let startTransform = 0;
+        
+        panelHandle.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            startTransform = bottomPanel.classList.contains('expanded') ? 0 : 1;
+        });
+        
+        panelHandle.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+        
+        panelHandle.addEventListener('touchend', (e) => {
+            const endY = e.changedTouches[0].clientY;
+            const diff = startY - endY;
+            
+            if (diff > 30) {
+                // Swiped up
+                bottomPanel.classList.add('expanded');
+            } else if (diff < -30) {
+                // Swiped down
+                bottomPanel.classList.remove('expanded');
+            }
+        });
+    }
+    
+    // Mobile shape select - sync with desktop and trigger same logic
+    const mobileShapeSelect = document.getElementById('mobile-shape-select');
+    const desktopShapeSelect = document.getElementById('shape-select');
+    
+    if (mobileShapeSelect && desktopShapeSelect) {
+        mobileShapeSelect.addEventListener('change', (e) => {
+            desktopShapeSelect.value = e.target.value;
+            desktopShapeSelect.dispatchEvent(new Event('change'));
+        });
+        
+        // Also sync desktop changes to mobile
+        const originalListener = desktopShapeSelect.onchange;
+        desktopShapeSelect.addEventListener('change', () => {
+            mobileShapeSelect.value = desktopShapeSelect.value;
+        });
+    }
+    
+    // Mobile visualization buttons - trigger desktop equivalents
+    const mobileButtons = {
+        'mobile-show-vertices': 'show-vertices',
+        'mobile-connect-edges': 'connect-edges',
+        'mobile-form-faces': 'form-faces',
+        'mobile-assemble-mesh': 'assemble-mesh',
+        'mobile-reset': 'reset'
+    };
+    
+    Object.entries(mobileButtons).forEach(([mobileId, desktopId]) => {
+        const mobileBtn = document.getElementById(mobileId);
+        const desktopBtn = document.getElementById(desktopId);
+        
+        if (mobileBtn && desktopBtn) {
+            mobileBtn.addEventListener('click', () => {
+                desktopBtn.click();
+            });
+        }
+    });
+    
+    // Mobile settings sliders - sync bidirectionally with desktop
+    const mobileSliders = {
+        'mobile-lighting-rotation': { desktop: 'lighting-rotation', value: 'lighting-rotation-value', mobileValue: 'mobile-lighting-rotation-value', suffix: '°' },
+        'mobile-skybox-rotation': { desktop: 'skybox-rotation', value: 'skybox-rotation-value', mobileValue: 'mobile-skybox-rotation-value', suffix: '°' },
+        'mobile-vertex-size': { desktop: 'vertex-size', value: 'vertex-size-value', mobileValue: 'mobile-vertex-size-value', suffix: '', decimals: 2 },
+        'mobile-animation-max-time': { desktop: 'animation-max-time', value: 'animation-max-time-value', mobileValue: 'mobile-animation-max-time-value', suffix: 's', decimals: 1 }
+    };
+    
+    Object.entries(mobileSliders).forEach(([mobileId, config]) => {
+        const mobileSlider = document.getElementById(mobileId);
+        const desktopSlider = document.getElementById(config.desktop);
+        const mobileValueDisplay = document.getElementById(config.mobileValue);
+        const desktopValueDisplay = document.getElementById(config.value);
+        
+        if (mobileSlider && desktopSlider) {
+            // Sync initial value
+            mobileSlider.value = desktopSlider.value;
+            
+            mobileSlider.addEventListener('input', (e) => {
+                desktopSlider.value = e.target.value;
+                desktopSlider.dispatchEvent(new Event('input'));
+                
+                // Update mobile display
+                if (mobileValueDisplay) {
+                    let displayVal = e.target.value;
+                    if (config.decimals !== undefined) {
+                        displayVal = parseFloat(displayVal).toFixed(config.decimals);
+                    }
+                    mobileValueDisplay.textContent = displayVal + config.suffix;
+                }
+            });
+            
+            // Sync desktop changes to mobile
+            desktopSlider.addEventListener('input', () => {
+                mobileSlider.value = desktopSlider.value;
+                if (mobileValueDisplay) {
+                    let displayVal = desktopSlider.value;
+                    if (config.decimals !== undefined) {
+                        displayVal = parseFloat(displayVal).toFixed(config.decimals);
+                    }
+                    mobileValueDisplay.textContent = displayVal + config.suffix;
+                }
+            });
+        }
+    });
+    
+    // Mobile toggle buttons - sync with desktop
+    const mobileToggles = {
+        'mobile-toggle-floor-helpers': 'toggle-floor-helpers',
+        'mobile-toggle-background': 'toggle-background',
+        'mobile-toggle-skybox-bottom': 'toggle-skybox-bottom',
+        'mobile-settings-reset': 'settings-reset'
+    };
+    
+    Object.entries(mobileToggles).forEach(([mobileId, desktopId]) => {
+        const mobileBtn = document.getElementById(mobileId);
+        const desktopBtn = document.getElementById(desktopId);
+        
+        if (mobileBtn && desktopBtn) {
+            mobileBtn.addEventListener('click', () => {
+                desktopBtn.click();
+                // Sync button style for toggles
+                if (mobileId !== 'mobile-settings-reset') {
+                    mobileBtn.style.background = desktopBtn.style.background;
+                }
+            });
+        }
+    });
+    
+    // Mobile background color picker
+    const mobileBgColor = document.getElementById('mobile-bg-color');
+    const desktopBgColor = document.getElementById('bg-color');
+    
+    if (mobileBgColor && desktopBgColor) {
+        mobileBgColor.addEventListener('input', (e) => {
+            desktopBgColor.value = e.target.value;
+            desktopBgColor.dispatchEvent(new Event('input'));
+        });
+        
+        desktopBgColor.addEventListener('input', () => {
+            mobileBgColor.value = desktopBgColor.value;
+        });
+    }
+    
+    // Sync button text state to mobile versions
+    function syncButtonStates() {
+        const buttonPairs = [
+            { desktop: 'show-vertices', mobile: 'mobile-show-vertices', showText: 'Vertices', hideText: 'Vertices' },
+            { desktop: 'connect-edges', mobile: 'mobile-connect-edges', showText: 'Edges', hideText: 'Edges' },
+            { desktop: 'form-faces', mobile: 'mobile-form-faces', showText: 'Faces', hideText: 'Faces' },
+            { desktop: 'assemble-mesh', mobile: 'mobile-assemble-mesh', showText: 'Mesh', hideText: 'Mesh' }
+        ];
+        
+        buttonPairs.forEach(pair => {
+            const desktopBtn = document.getElementById(pair.desktop);
+            const mobileBtn = document.getElementById(pair.mobile);
+            
+            if (desktopBtn && mobileBtn) {
+                const isHiding = desktopBtn.textContent.includes('Hide');
+                mobileBtn.style.background = isHiding ? 'rgba(0, 123, 255, 1)' : 'rgba(0, 123, 255, 0.8)';
+                mobileBtn.style.boxShadow = isHiding ? '0 0 8px rgba(0, 123, 255, 0.5)' : 'none';
+            }
+        });
+    }
+    
+    // Observe button text changes
+    const vizButtons = ['show-vertices', 'connect-edges', 'form-faces', 'assemble-mesh'];
+    vizButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            const observer = new MutationObserver(syncButtonStates);
+            observer.observe(btn, { childList: true, characterData: true, subtree: true });
+        }
+    });
+    
+    // Update mobile info displays
+    function updateMobileInfo() {
+        const mobileVertexCount = document.getElementById('mobile-vertex-count');
+        const mobileEdgeCount = document.getElementById('mobile-edge-count');
+        const mobileFaceCount = document.getElementById('mobile-face-count');
+        
+        const vertexCount = document.getElementById('vertex-count');
+        const edgeCount = document.getElementById('edge-count');
+        const faceCount = document.getElementById('face-count');
+        
+        if (mobileVertexCount && vertexCount) {
+            mobileVertexCount.textContent = vertexCount.textContent;
+        }
+        if (mobileEdgeCount && edgeCount) {
+            mobileEdgeCount.textContent = edgeCount.textContent;
+        }
+        if (mobileFaceCount && faceCount) {
+            mobileFaceCount.textContent = faceCount.textContent;
+        }
+    }
+    
+    // Observe info changes
+    const infoElements = ['vertex-count', 'edge-count', 'face-count'];
+    infoElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const observer = new MutationObserver(updateMobileInfo);
+            observer.observe(el, { childList: true, characterData: true, subtree: true });
+        }
+    });
+    
+    // Initial sync
+    updateMobileInfo();
+    
+    // Sync mobile shape select options when preset models are loaded
+    const syncMobileShapeOptions = () => {
+        if (mobileShapeSelect && desktopShapeSelect) {
+            // Copy all options from desktop to mobile
+            const desktopOptions = desktopShapeSelect.querySelectorAll('option');
+            const existingMobileValues = new Set(
+                Array.from(mobileShapeSelect.querySelectorAll('option')).map(o => o.value)
+            );
+            
+            desktopOptions.forEach(opt => {
+                if (!existingMobileValues.has(opt.value)) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = opt.value;
+                    newOpt.textContent = opt.textContent;
+                    mobileShapeSelect.appendChild(newOpt);
+                }
+            });
+        }
+    };
+    
+    // Watch for new options being added to desktop select
+    if (desktopShapeSelect) {
+        const optionsObserver = new MutationObserver(syncMobileShapeOptions);
+        optionsObserver.observe(desktopShapeSelect, { childList: true });
+    }
+    
+    console.log('Mobile UI initialized');
+})();
