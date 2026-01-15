@@ -56,7 +56,7 @@ const isMobile = () => window.innerWidth <= 535;
 - Scene setup and all 3D objects are in module scope at top of `main.js`
 - Custom sky shader with `SkyShader` material for procedural background
 - Geometry visualization uses GSAP for vertex/edge/face animations
-- Models loaded from `models/` directory via OBJLoader
+- **Models loaded from `models/models.json`** - add new OBJ files to `models/` and register in the JSON array with `id`, `title`, and `path`
 
 ## PWA & Deployment
 
