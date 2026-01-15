@@ -192,6 +192,46 @@
             max-width: 300px;
         }
 
+        #settings h3 {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            margin: 0;
+            padding: 8px 15px;
+            opacity: 0.9;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        #settings h3::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 8px;
+        }
+
+        #settings .collapse-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 10px;
+            padding: 0;
+            margin: 0;
+            display: inline-block;
+            transition: transform 0.3s ease;
+            line-height: 1;
+            flex-shrink: 0;
+            min-width: 16px;
+            text-align: center;
+        }
+
+        #settings .collapse-btn:hover {
+            color: rgba(255, 255, 255, 1);
+        }
+
         /* ===== DESKTOP LAYOUT RESET (override mobile) ===== */
         @media (min-width: 536px) {
             #settings {
@@ -348,46 +388,6 @@
 
             #settings.collapsed {
                 transform: translateY(calc(100% - 40px));
-            }
-
-            #settings h3 {
-                display: flex;
-                justify-content: flex-start;
-                align-items: center;
-                gap: 8px;
-                font-size: 12px;
-                margin: 0;
-                padding: 8px 15px;
-                opacity: 0.9;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            }
-
-            #settings h3::after {
-                content: '';
-                flex: 1;
-                height: 1px;
-                background: rgba(255, 255, 255, 0.3);
-                margin: 0 8px;
-            }
-
-            #settings .collapse-btn {
-                background: none;
-                border: none;
-                color: rgba(255, 255, 255, 0.7);
-                cursor: pointer;
-                font-size: 10px;
-                padding: 0;
-                margin: 0;
-                display: inline-block;
-                transition: transform 0.3s ease;
-                line-height: 1;
-                flex-shrink: 0;
-                min-width: 16px;
-                text-align: center;
-            }
-
-            #settings .collapse-btn:hover {
-                color: rgba(255, 255, 255, 1);
             }
 
             #settings::before {
