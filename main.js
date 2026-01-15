@@ -930,12 +930,10 @@ function showVertices() {
                 });
             });
         }
-        document.getElementById('show-vertices').textContent = 'Hide Vertices';
     } else {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             vertices.visible = false;
-            document.getElementById('show-vertices').textContent = 'Show Vertices';
         } else {
             const reverseCount = verticesData.length - 1;
             verticesData.forEach((pos, index) => {
@@ -959,7 +957,6 @@ function showVertices() {
                     onComplete: () => {
                         if (index === 0) {
                             vertices.visible = false;
-                            document.getElementById('show-vertices').textContent = 'Show Vertices';
                         }
                     }
                 });
@@ -1055,12 +1052,10 @@ function connectEdges() {
                 });
             });
         }
-        document.getElementById('connect-edges').textContent = 'Hide Edges';
     } else {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             edgesMesh.visible = false;
-            document.getElementById('connect-edges').textContent = 'Show Edges';
         } else {
             const reverseCount = edgesData.length - 1;
             edgesData.forEach((edge, edgeIndex) => {
@@ -1079,7 +1074,6 @@ function connectEdges() {
                     onComplete: () => {
                         if (edgeIndex === 0) {
                             edgesMesh.visible = false;
-                            document.getElementById('connect-edges').textContent = 'Show Edges';
                         }
                     }
                 });
@@ -1202,13 +1196,11 @@ function formFaces() {
                 });
             });
         }
-        document.getElementById('form-faces').textContent = 'Hide Faces';
     } else {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             facesMesh.visible = false;
             if (facesInnerMesh) facesInnerMesh.visible = false;
-            document.getElementById('form-faces').textContent = 'Show Faces';
         } else {
             const reverseCount = facesData.length - 1;
             facesData.forEach((face, faceIndex) => {
@@ -1229,7 +1221,6 @@ function formFaces() {
                         if (faceIndex === 0) {
                             facesMesh.visible = false;
                             if (facesInnerMesh) facesInnerMesh.visible = false;
-                            document.getElementById('form-faces').textContent = 'Show Faces';
                         }
                     }
                 });
@@ -1350,7 +1341,6 @@ function assembleMesh() {
                 ease: "none"
             });
         }
-        document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
     } else {
         // Always animate on toggle
         const material = mesh.material;
@@ -1370,14 +1360,12 @@ function assembleMesh() {
                     ease: "none"
                 });
             }
-            document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
         } else {
             // Hide with dissolve-out
             // Do not force-show faces if they were hidden
             if (ASSEMBLY_DURATION === 0) {
                 material.uniforms.dissolve.value = 0;
                 mesh.visible = false;
-                document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
             } else {
                 gsap.to(material.uniforms.dissolve, {
                     value: 0,
@@ -1385,7 +1373,6 @@ function assembleMesh() {
                     ease: "none",
                     onComplete: () => {
                         mesh.visible = false;
-                        document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
                     }
                 });
             }
@@ -1410,19 +1397,16 @@ function clearObjects() {
         vertices = null;
         window.verticesMesh = null;
         vertexScales = [];
-        document.getElementById('show-vertices').textContent = 'Show Vertices';
     }
     if (edgesMesh) {
         scene.remove(edgesMesh);
         edgesMesh = null;
         edgeVisibility = [];
-        document.getElementById('connect-edges').textContent = 'Show Edges';
     }
     if (facesMesh) {
         scene.remove(facesMesh);
         facesMesh = null;
         faceVisibility = [];
-        document.getElementById('form-faces').textContent = 'Show Faces';
     }
     if (facesInnerMesh) {
         scene.remove(facesInnerMesh);
@@ -1430,7 +1414,6 @@ function clearObjects() {
     }
     if (mesh) scene.remove(mesh);
     mesh = null;
-    document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
 }
 
 function updateInfo() {
