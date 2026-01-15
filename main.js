@@ -1463,7 +1463,8 @@ if ('serviceWorker' in navigator) {
         if (isMobile()) {
             settingsPanel.style.position = 'fixed';
         } else {
-            settingsPanel.style.position = 'relative';
+            // In desktop mode, let CSS handle positioning (don't override with inline styles)
+            settingsPanel.style.position = '';
             settingsPanel.classList.remove('expanded');
         }
     }
