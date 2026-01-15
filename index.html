@@ -192,6 +192,36 @@
             max-width: 300px;
         }
 
+        /* ===== DESKTOP LAYOUT RESET (override mobile) ===== */
+        @media (min-width: 536px) {
+            #settings {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                left: auto;
+                width: auto;
+                max-width: none;
+                border-radius: 8px;
+                max-height: none;
+                transform: none;
+                padding: 15px;
+                cursor: auto;
+            }
+
+            #settings h3 {
+                display: block;
+            }
+
+            #settings::before {
+                display: none;
+            }
+
+            #canvas-container {
+                margin-top: 0;
+                height: 100vh;
+            }
+        }
+
         /* ===== MOBILE PORTRAIT STYLES ===== */
         @media (max-width: 535px) {
             body {
