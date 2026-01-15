@@ -203,18 +203,18 @@
                 max-width: 330px;
                 border-radius: 8px;
                 max-height: none;
-                overflow-y: visible;
+                overflow: hidden;
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-                transform: translateY(0);
-                transition: transform 0.3s ease;
+                transition: max-height 0.3s ease;
                 padding: 15px;
                 cursor: auto;
                 background: rgba(0, 0, 0, 0.8);
             }
 
             #settings.collapsed {
-                transform: translateY(calc(100% + 20px));
+                max-height: 40px;
+                overflow: hidden;
             }
 
             #settings h3 {
@@ -235,13 +235,16 @@
                 padding: 0;
                 margin: 0;
                 display: inline-block;
-                transition: color 0.2s ease;
+                transition: transform 0.3s ease;
+                line-height: 1;
             }
 
             #settings .collapse-btn:hover {
                 color: rgba(255, 255, 255, 1);
             }
-                display: block;
+
+            #settings.collapsed .collapse-btn {
+                transform: rotate(180deg);
             }
 
             #settings::before {
@@ -511,7 +514,7 @@
     </div>
 
     <div id="settings">
-        <h3>Settings<button class="collapse-btn" id="settings-collapse-btn" title="Collapse">⚙</button></h3>
+        <h3>Settings<button class="collapse-btn" id="settings-collapse-btn" title="Collapse">↓</button></h3>
         
         <div class="control-group">
             <label for="lighting-rotation">Lighting Rotation:
