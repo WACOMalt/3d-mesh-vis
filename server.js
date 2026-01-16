@@ -10,7 +10,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname), {
+app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
@@ -34,16 +34,16 @@ app.use(express.static(path.join(__dirname), {
 
 
 // Serve static files and index.html at /3d-mesh-vis for reverse proxy compatibility
-app.use('/3d-mesh-vis', express.static(path.join(__dirname)));
+app.use('/3d-mesh-vis', express.static(path.join(__dirname, 'public')));
 
 // Fallback to index.html for /3d-mesh-vis SPA routes
 app.get('/3d-mesh-vis/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Keep root fallback for local dev
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {

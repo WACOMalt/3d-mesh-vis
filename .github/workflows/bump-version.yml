@@ -1,0 +1,50 @@
+name: Version Bump
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  bump-version:
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Bump Version
+        id: bump
+        run: |
+          # 1. Bump package.json version (patch)
+          npm version patch --no-git-tag-version
+
+          # 2. Get new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # 3. Update tauri.conf.json version
+          # Use jq to update or simple sed if jq is missing (jq is standard on ubuntu-latest)
+          jq ".package.version = \"$NEW_VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+
+          # 4. Commit and Tag
+          git add package.json package-lock.json src-tauri/tauri.conf.json
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+          git tag "v$NEW_VERSION"
+
+          # 5. Push changes and tag
+          git push origin master
+          git push origin "v$NEW_VERSION"

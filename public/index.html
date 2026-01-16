@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description"
+        content="Interactive 3D visualization tool for exploring vertices, edges, faces, and mesh assembly">
+    <meta name="theme-color" content="#6B2D5B">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="3D Mesh Vis">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>3D Mesh Visualizer</title>
+    <style>
+        /* Inter font - locally hosted for offline PWA support */
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('./fonts/Inter-Regular.woff2') format('woff2');
+        }
+
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 500;
+            font-display: swap;
+            src: url('./fonts/Inter-Medium.woff2') format('woff2');
+        }
+
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url('./fonts/Inter-SemiBold.woff2') format('woff2');
+        }
+
+        /* CSS Custom Properties for theming */
+        :root {
+            --accent-color: #6B2D5B;
+            --accent-hover: #8A3A75;
+            --accent-rgb: 107, 45, 91;
+            --panel-bg: rgba(28, 26, 30, 0.8);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            --text-primary: #f5f5f5;
+            --text-secondary: #9a9a9a;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: #1a1a1c;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        /* Noise texture overlay for panels */
+        .noise-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            border-radius: inherit;
+            z-index: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+
+        button.active {
+            box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.4);
+        }
+
+        #controls,
+        #settings {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        input,
+        select {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        #controls {
+            position: absolute;
+
+            top: 20px;
+            left: 20px;
+            background: rgba(28, 26, 30, 0.85);
+            padding: 0;
+            /* Reset padding, handled by inner content */
+            border-radius: 16px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            width: 440px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.35s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .controls-top-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px 10px 20px;
+
+            margin-bottom: 0px;
+        }
+
+        .controls-top-section .settings-header {
+            flex: 1;
+            padding: 0;
+            background: none;
+            border: none;
+            cursor: default;
+        }
+
+        .controls-top-section .settings-header h3 {
+            font-size: 14px;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .controls-top-section .shape-select-group {
+            flex: 1;
+            margin: 0;
+        }
+
+        .control-group {
+            margin-bottom: 0px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .control-group.center-content {
+            text-align: center;
+        }
+
+        .control-group.divider-top {
+            padding-top: 15px;
+            margin-top: 15px;
+            border-top: 1px solid var(--panel-border);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            color: var(--text-secondary);
+        }
+
+        select,
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #2b2b2b;
+            /* Solid dark background */
+            color: #ffffff;
+            /* Solid white text */
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            width: 100%;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        select {
+            /* Remove default arrow to prevent OS styling issues */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            /* Add custom arrow */
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+            padding-right: 32px;
+            /* Make space for arrow */
+        }
+
+        select:hover,
+        input[type="file"]:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background-color: #383838;
+        }
+
+        select option {
+            background-color: #2b2b2b;
+            color: #fff;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            /* Force single row */
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            /* Smooth scrolling */
+            -webkit-overflow-scrolling: touch;
+            /* Hide scrollbar but allow functionality */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            /* Ensure it takes full width if needed to scroll */
+            max-width: 100%;
+            /* Optional: Add padding to allow scrolling to edges */
+            padding-bottom: 5px;
+            /* Fade effect for scrollable content */
+            mask-image: linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent);
+        }
+
+        .button-group::-webkit-scrollbar {
+            display: none;
+        }
+
+        .button-group button {
+            /* Prevent buttons from squishing */
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        button {
+            padding: 10px 16px;
+            background: rgba(108, 117, 125, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            flex: 1;
+            box-shadow: none;
+        }
+
+        button:hover {
+            background: rgba(108, 117, 125, 0.95);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+            background: rgba(108, 117, 125, 0.9);
+        }
+
+        button:focus-visible {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
+        }
+
+        /* Active State - PURPLE */
+        .toggle-btn.active,
+        button.active {
+            background: var(--accent-color) !important;
+            border-color: var(--accent-hover) !important;
+            color: #fff !important;
+            box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.4);
+        }
+
+        /* Recenter container & button */
+        #recenter-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: auto;
+            /* Enable clicks */
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+
+        #recenter-container:hover {
+            opacity: 1;
+        }
+
+        #recenter-btn {
+            width: 40px;
+            height: 40px;
+            padding: 0 0 2px 0;
+            /* Slight bottom adjustment for visual centering */
+            border-radius: 50%;
+            flex: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            line-height: normal;
+            /* Fix vertical alignment */
+            background: linear-gradient(135deg, var(--accent-color) 0%, rgba(var(--accent-rgb), 0.75) 100%);
+            box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3);
+            pointer-events: none;
+            /* Let container handle interaction */
+            transition: all 0.2s ease;
+        }
+
+        #recenter-container:hover #recenter-btn {
+            background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-color) 100%);
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.4);
+        }
+
+        #recenter-container:active #recenter-btn {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.3);
+        }
+
+        .recenter-label {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            /* Strong shadow for readability over 3D */
+            pointer-events: none;
+            user-select: none;
+        }
+
+        @media (max-width: 535px) {
+            #recenter-container {
+                top: 135px;
+            }
+        }
+
+        @media (min-width: 536px) {
+            #recenter-container {
+                top: 165px;
+            }
+        }
+
+        /* Loading indicator */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #loading-overlay.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        .loading-content {
+            background: var(--panel-bg);
+            padding: 24px 32px;
+            border-radius: 12px;
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: var(--panel-shadow);
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--panel-border);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+        }
+
+        .stat {
+            margin: 5px 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+            letter-spacing: 0.01em;
+        }
+
+        .stat strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        h3 {
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right,
+                    var(--accent-color) 0%,
+                    rgba(var(--accent-rgb), 0.3) 50%,
+                    rgba(255, 255, 255, 0.1) 100%);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.4);
+            margin-top: -5px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.5);
+        }
+
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.4);
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        input[type="range"]:focus-visible {
+            outline: none;
+        }
+
+        input[type="range"]:focus-visible::-webkit-slider-thumb {
+            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.4), 0 2px 8px rgba(var(--accent-rgb), 0.4);
+        }
+
+        .slider-value {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            min-width: 40px;
+            pointer-events: none;
+        }
+
+        /* ===== SETTINGS PANEL (CONTROL DECK) ===== */
+        #settings {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(28, 26, 30, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            z-index: 100;
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.35s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .settings-header {
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+        }
+
+        .settings-header h3 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+            border: none;
+            padding: 0;
+            display: block;
+        }
+
+        .settings-header h3::after {
+            display: none;
+        }
+
+        .collapse-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease, color 0.2s ease;
+            font-size: 10px;
+        }
+
+        .collapse-btn:hover {
+            color: #fff;
+            background: transparent;
+        }
+
+        .settings-content {
+            padding: 16px;
+            overflow-y: auto;
+            max-height: 60vh;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .settings-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .settings-content::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        /* Groups */
+        .setting-group {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .group-header {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.45);
+            margin-bottom: 10px;
+            font-weight: 600;
+            padding-left: 2px;
+        }
+
+        /* Control Rows */
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 12px;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-row label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            margin: 0;
+            white-space: nowrap;
+            min-width: 80px;
+            font-weight: 500;
+        }
+
+        .range-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 8px 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: border-color 0.2s;
+        }
+
+        .range-wrapper:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .range-wrapper input[type="range"] {
+            flex: 1;
+            height: 4px;
+            margin: 0;
+            background: transparent;
+        }
+
+        .range-wrapper input[type="range"]::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .value-badge {
+            font-size: 11px;
+            font-family: inherit;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent-color);
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            min-width: 36px;
+            text-align: center;
+            letter-spacing: 0.02em;
+        }
+
+        /* Toggle Grid */
+        .toggle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+
+        .color-picker-wrapper {
+            grid-column: span 1;
+            display: flex;
+            align-items: stretch;
+            height: 100%;
+        }
+
+        .color-picker-wrapper input[type="color"] {
+            width: 100%;
+            height: 100%;
+            min-height: 36px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Action Row (Reset) */
+        .action-row {
+            margin-top: 16px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid rgba(var(--accent-rgb), 0.4);
+            color: var(--accent-color);
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            background: rgba(var(--accent-rgb), 0.1);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        /* ===== DESKTOP LAYOUT ===== */
+        @media (min-width: 536px) {
+            #settings.collapsed {
+                height: 52px !important;
+                width: 160px;
+                background: rgba(28, 26, 30, 0.6);
+                border-color: transparent;
+            }
+
+            #settings.collapsed:hover {
+                background: rgba(28, 26, 30, 0.8);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            #settings.collapsed .settings-header {
+                border-bottom: 1px solid transparent;
+                padding-right: 14px;
+            }
+
+            #settings.collapsed .collapse-btn {
+                transform: rotate(180deg);
+                background: transparent;
+                border-color: transparent;
+            }
+
+            #settings.collapsed .settings-content {
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s;
+            }
+
+            #settings::before,
+            #settings::after {
+                display: none;
+            }
+
+            #canvas-container {
+                margin-top: 0;
+                height: 100vh;
+            }
+        }
+
+        /* ===== MOBILE PORTRAIT STYLES ===== */
+        @media (max-width: 535px) {
+            body {
+                overflow-y: auto;
+            }
+
+            /* Preserved Top Control Bar Styles */
+            /* Preserved Top Control Bar Styles */
+            #controls {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 0;
+                border-bottom: 1px solid var(--panel-border);
+                padding: 0 !important;
+                margin: 0;
+                z-index: 200;
+                box-sizing: border-box;
+            }
+
+            .controls-top-section {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 8px 12px;
+                background: rgba(0, 0, 0, 0.2);
+                margin-bottom: 0;
+            }
+
+            .controls-top-section .settings-header {
+                flex: 1;
+                background: none;
+                border: none;
+                padding: 0;
+            }
+
+            .controls-top-section .settings-header h3 {
+                font-size: 14px;
+                margin: 0;
+                white-space: nowrap;
+            }
+
+            .shape-select-group {
+                flex: 1;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Stats / Bottom elements padding margin reduction */
+            .control-group {
+                margin-bottom: 10px;
+            }
+
+            /* Specifically target the container of "Vertices/Edges/Faces" */
+            #controls .control-group:last-child {
+                padding-bottom: 5px !important;
+                margin-bottom: 0 !important;
+            }
+
+            /* File Input wrapper padding */
+            #controls .control-group:nth-child(2) {
+                padding: 5px 12px !important;
+                margin-bottom: px;
+            }
+
+            /* Button group wrapper padding */
+            #controls .control-group:nth-child(3) {
+                padding: 0 12px !important;
+            }
+
+            .control-group {
+                margin-bottom: 15px;
+            }
+
+            #controls h3 {
+                display: block;
+            }
+
+            #controls label {
+                display: none;
+            }
+
+            #controls select {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+
+            #controls input[type="file"] {
+                display: none;
+            }
+
+            .button-group {
+                flex-wrap: nowrap;
+                gap: 10px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+                justify-content: flex-start;
+                /* Align left to invite scrolling */
+                padding-bottom: 5px;
+            }
+
+            .button-group button {
+                padding: 8px 16px;
+                font-size: 14px;
+                flex: 0 0 auto;
+                /* Prevent shrinking */
+                min-width: auto;
+                white-space: nowrap;
+            }
+
+            #controls>.control-group:nth-child(2),
+            #controls>.control-group:nth-child(3) {
+                margin-bottom: 0px;
+            }
+
+            /* New Settings Bottom Sheet Styles */
+            #settings {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: none;
+                border-radius: 20px 20px 0 0;
+                z-index: 300;
+                border: 1px solid var(--panel-border);
+                border-bottom: none;
+                max-height: 85vh;
+                height: auto;
+                transform: translateY(100%);
+                padding: 0;
+                background: var(--panel-bg);
+            }
+
+            #settings.expanded {
+                transform: translateY(0);
+            }
+
+            #settings.collapsed {
+                transform: translateY(calc(100% - 54px));
+                background: var(--panel-bg);
+            }
+
+            #settings.collapsed .settings-header {
+                justify-content: center;
+            }
+
+            #settings.collapsed .settings-header h3 {
+                opacity: 0.8;
+            }
+
+            .settings-content {
+                padding-bottom: 40px;
+                /* Safe area */
+            }
+
+            #canvas-container {
+                margin-top: 60px;
+                height: calc(100vh - 60px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Suppress Three.js deprecation warning immediately -->
+    <script>
+        const originalWarn = console.warn;
+        console.warn = function (...args) {
+            if (typeof args[0] === 'string' && args[0].includes('deprecated')) return;
+            originalWarn.apply(console, args);
+        };
+    </script>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading model...</div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="controls" class="noise-overlay">
+        <div class="controls-top-section">
+            <div class="settings-header">
+                <h3>3D Mesh Visualizer</h3>
+            </div>
+
+            <div class="control-group shape-select-group">
+                <select id="shape-select">
+                    <option value="cube">Cube</option>
+                    <option value="cylinder">Cylinder</option>
+                    <option value="cone">Cone</option>
+                    <option value="sphere">Sphere</option>
+                    <option value="obj">Load OBJ File</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="control-group" style="padding: 0 20px;">
+            <input type="file" id="obj-file" accept=".obj"
+                style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">
+        </div>
+
+        <div class="control-group" style="padding: 0 20px;">
+            <div class="button-group">
+                <button id="show-vertices" class="toggle-btn">Vertices</button>
+                <button id="connect-edges" class="toggle-btn">Edges</button>
+                <button id="form-faces" class="toggle-btn">Faces</button>
+                <button id="assemble-mesh" class="toggle-btn">Mesh</button>
+                <button id="reset">Reset</button>
+            </div>
+        </div>
+
+        <div class="control-group"
+            style="padding: 0 20px 15px 20px; font-size: 11px; color: rgba(255,255,255,0.6); text-align: center; margin-bottom: 0;">
+            <span style="display: flex; gap: 12px; justify-content: center;">
+                <span>Verts: <strong id="vertex-count" style="color: var(--accent-color);">0</strong></span>
+                <span>Edges: <strong id="edge-count" style="color: var(--accent-color);">0</strong></span>
+                <span>Faces: <strong id="face-count" style="color: var(--accent-color);">0</strong></span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Recenter button -->
+    <!-- Recenter button -->
+    <div id="recenter-container">
+        <button id="recenter-btn" title="Recenter view on model">⊙</button>
+        <span class="recenter-label">Recenter</span>
+    </div>
+
+    <div id="settings" class="noise-overlay">
+        <div class="settings-header">
+            <h3>Settings</h3>
+            <button class="collapse-btn" id="settings-collapse-btn" title="Collapse">▼</button>
+        </div>
+
+        <div class="settings-content">
+            <!-- GROUP: MODEL -->
+            <div class="setting-group">
+                <div class="group-header">Model</div>
+
+                <!-- Vertex Size -->
+                <div class="control-row">
+                    <label for="vertex-size">Vertex Size</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="vertex-size" min="0.01" max="0.1" value="0.05" step="any">
+                        <span class="value-badge" id="vertex-size-value">0.05</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GROUP: SCENE -->
+            <div class="setting-group">
+                <div class="group-header">Scene</div>
+
+                <!-- Lighting Rotation -->
+                <div class="control-row">
+                    <label for="lighting-rotation">Light Rotation</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="lighting-rotation" min="0" max="360" value="180">
+                        <span class="value-badge" id="lighting-rotation-value">180°</span>
+                    </div>
+                </div>
+
+                <!-- Skybox Rotation -->
+                <div class="control-row">
+                    <label for="skybox-rotation">Sky Rotation</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="skybox-rotation" min="0" max="360" value="212">
+                        <span class="value-badge" id="skybox-rotation-value">212°</span>
+                    </div>
+                </div>
+
+                <!-- Animation Duration -->
+                <div class="control-row">
+                    <label for="animation-max-time">Anim Duration</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="animation-max-time" min="0" max="10" value="2" step="any">
+                        <span class="value-badge" id="animation-max-time-value">2s</span>
+                    </div>
+                </div>
+
+                <!-- Panel Offset Checkbox -->
+                <div class="control-row">
+                    <label for="camera-offset-toggle">Panel View Offset</label>
+                    <div style="flex: 1; text-align: right;">
+                        <input type="checkbox" id="camera-offset-toggle" checked
+                            style="width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent-color);">
+                    </div>
+                </div>
+
+                <!-- Toggles Grid (2 columns) -->
+                <div class="toggle-grid">
+                    <button id="toggle-background" class="toggle-btn" title="Toggle Skybox">Skybox</button>
+                    <button id="toggle-skybox-bottom" class="toggle-btn" title="Toggle Floor">Floor</button>
+                    <button id="toggle-floor-helpers" class="toggle-btn" title="Toggle Grid">Grid</button>
+                    <!-- Background Color -->
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="bg-color" value="#333333" title="Background Color">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reset Action -->
+            <div class="action-row">
+                <button id="settings-reset" class="action-btn">Reset All Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js via CDN with importmap -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.149.0/+esm",
+        "three/controls": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/controls/OrbitControls.js",
+        "three/loaders": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/loaders/OBJLoader.js"
+      }
+    }
+    </script>
+
+    <!-- GSAP (local) -->
+    <script src="gsap.min.js"></script>
+
+    <!-- Pickr Color Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.9.0/dist/themes/classic.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.9.0/dist/pickr.es5.min.js"></script>
+
+    <!-- Main application script as module -->
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
