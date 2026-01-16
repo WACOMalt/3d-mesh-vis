@@ -207,6 +207,11 @@ let facesMesh = null;  // Merged faces mesh
 let facesInnerMesh = null; // Back-side faces for inside color
 let faceVisibility = [];  // Track individual face visibility for animation
 let mesh = null;
+// Animation State Tracking
+let activeVerticesTween = null;
+let activeEdgesTween = null;
+let activeFacesTween = null;
+let activeMeshTween = null;
 
 // ===== Custom Shader Material for Edges =====
 const edgeShaderMaterial = new THREE.ShaderMaterial({
@@ -552,6 +557,12 @@ async function loadCustomModelsFromFile() {
             option.textContent = title;
             selectEl.appendChild(option);
         });
+
+        // Ensure "Load OBJ File" is always at the bottom
+        const objOption = selectEl.querySelector('option[value="obj"]');
+        if (objOption) {
+            selectEl.appendChild(objOption); // Moves it to the end
+        }
     } catch (error) {
         console.warn('Failed to load custom models list:', error);
     }
@@ -623,13 +634,13 @@ document.getElementById('settings-reset').addEventListener('click', () => {
     // Toggles
     gridHelper.visible = true;
     floorAxesHelper.visible = true;
-    document.getElementById('toggle-floor-helpers').style.background = 'rgba(0, 123, 255, 0.8)';
+    // document.getElementById('toggle-floor-helpers').classList.add('active'); // Handled by init block below
 
     sky.visible = true;
-    document.getElementById('toggle-background').style.background = 'rgba(0, 123, 255, 0.8)';
+    // document.getElementById('toggle-background').classList.add('active'); // Handled by init block below
 
     sky.material.uniforms.showHorizonCutoff.value = 0.0;
-    document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+    // document.getElementById('toggle-skybox-bottom').classList.remove('active'); // Handled by init block below
 });
 
 let vertexSizeTimeout;
@@ -668,25 +679,24 @@ document.getElementById('toggle-floor-helpers').addEventListener('click', () => 
     floorHelpersVisible = !floorHelpersVisible;
     gridHelper.visible = floorHelpersVisible;
     floorAxesHelper.visible = floorHelpersVisible;
-    const button = document.getElementById('toggle-floor-helpers');
-    button.style.background = floorHelpersVisible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-floor-helpers').classList.toggle('active', floorHelpersVisible);
 });
 
 document.getElementById('toggle-background').addEventListener('click', () => {
     sky.visible = !sky.visible;
-    const button = document.getElementById('toggle-background');
-    button.style.background = sky.visible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-background').classList.toggle('active', sky.visible);
 });
 
 document.getElementById('toggle-skybox-bottom').addEventListener('click', () => {
     const currentValue = sky.material.uniforms.showHorizonCutoff.value;
     sky.material.uniforms.showHorizonCutoff.value = currentValue > 0.5 ? 0.0 : 1.0;
-    const button = document.getElementById('toggle-skybox-bottom');
-    button.style.background = sky.material.uniforms.showHorizonCutoff.value > 0.5 ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-skybox-bottom').classList.toggle('active', sky.material.uniforms.showHorizonCutoff.value > 0.5);
 });
 
-// Initialize toggle state to off (bottom hidden)
-document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+// Initialize toggle styles
+document.getElementById('toggle-floor-helpers').classList.toggle('active', floorHelpersVisible);
+document.getElementById('toggle-background').classList.toggle('active', sky.visible);
+document.getElementById('toggle-skybox-bottom').classList.toggle('active', sky.material.uniforms.showHorizonCutoff.value > 0.5);
 
 // ===== Color Picker =====
 const bgColorInput = document.getElementById('bg-color');
@@ -802,8 +812,8 @@ function autoScaleAndPositionModel(geometry) {
     const fovRad = THREE.MathUtils.degToRad(effectiveFOV);
     // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
     const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
-    // Add buffer (1.43x = 1.3 * 1.1 for comfortable viewing with extra space)
-    const cameraDistance = requiredDistance * 1.43;
+    // Add buffer (increased to 2.0 to handle diagonals of blocky shapes like cubes)
+    const cameraDistance = requiredDistance * 2.0;
 
     console.log('Aspect ratio:', aspectRatio, 'Effective FOV:', effectiveFOV, 'Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
 
@@ -823,10 +833,17 @@ function updateGeometry() {
             return;
         }
     }
-    // Apply auto-scaling and floor positioning to all geometries
     const result = autoScaleAndPositionModel(currentGeometry);
     const { center, distance } = result;
 
+    // Use centralized camera update
+    updateCameraView(center, distance);
+
+    extractData();
+    updateInfo();
+}
+
+function updateCameraView(center, distance) {
     // Update camera target to center on the model
     controls.target.copy(center);
 
@@ -835,8 +852,6 @@ function updateGeometry() {
     camera.position.copy(center).addScaledVector(cameraDirection, distance);
 
     controls.update();
-    extractData();
-    updateInfo();
 }
 
 function extractData() {
@@ -922,6 +937,10 @@ function showVertices() {
     const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
 
+    // Instant feedback
+    const btn = document.getElementById('show-vertices');
+    if (btn) btn.classList.toggle('active', !vertices.visible);
+
     if (!vertices.visible) {
         // Show with animation
         verticesData.forEach((pos, index) => {
@@ -935,31 +954,56 @@ function showVertices() {
 
         if (MAX_TIME === 0) {
             verticesData.forEach((pos, index) => {
-                vertexScales[index] = 1;
                 const matrix = new THREE.Matrix4();
                 matrix.compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
                 vertices.setMatrixAt(index, matrix);
             });
             vertices.instanceMatrix.needsUpdate = true;
         } else {
-            verticesData.forEach((pos, index) => {
-                gsap.to(vertexScales, {
-                    [index]: 1,
-                    duration: effectiveDuration,
-                    delay: index * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        if (!vertices) return;
+            // Performance Fix: Single tween driving all instances instead of N tweens
+            const animData = { progress: 0 };
+
+            // Kill previous animation
+            if (activeVerticesTween) activeVerticesTween.kill();
+
+            activeVerticesTween = gsap.to(animData, {
+                progress: 1,
+                duration: effectiveDuration + (verticesData.length * delayPerItem), // Total time covers all staggers
+                ease: "none",
+                onUpdate: () => {
+                    if (!vertices) return;
+
+                    const currentTime = animData.progress * (effectiveDuration + (verticesData.length * delayPerItem));
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < verticesData.length; i++) {
+                        // Calculate local progress for this item based on its start time
+                        const startTime = i * delayPerItem;
+                        // Map global time to local 0-1 factor
+                        let factor = (currentTime - startTime) / effectiveDuration;
+                        factor = Math.max(0, Math.min(1, factor)); // Clamp 0-1
+
+                        // Optimization: Only update if changing or not yet final
+                        // (Use tracking array to avoid redundant updates if desired, but this math is cheap)
+
+                        const scale = factor;
                         const matrix = new THREE.Matrix4();
                         matrix.compose(
-                            pos,
+                            verticesData[i],
                             new THREE.Quaternion(),
-                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                            new THREE.Vector3(scale, scale, scale)
                         );
-                        vertices.setMatrixAt(index, matrix);
+                        vertices.setMatrixAt(i, matrix);
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
                         vertices.instanceMatrix.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeVerticesTween = null;
+                }
             });
         }
     } else {
@@ -967,31 +1011,50 @@ function showVertices() {
         if (MAX_TIME === 0) {
             vertices.visible = false;
         } else {
-            const reverseCount = verticesData.length - 1;
-            verticesData.forEach((pos, index) => {
-                const reverseDelay = (reverseCount - index) * delayPerItem;
-                gsap.to(vertexScales, {
-                    [index]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        if (!vertices) return;
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (verticesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeVerticesTween) activeVerticesTween.kill();
+
+            activeVerticesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!vertices) return;
+
+                    const currentTime = animData.progress * totalDuration;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < verticesData.length; i++) {
+                        // Reverse index logic: last item starts first
+                        const reverseIndex = (verticesData.length - 1) - i;
+                        const startTime = i * delayPerItem; // Linear delay based on loop index
+
+                        // Map to local 0-1 factor (reversed: 1 -> 0)
+                        let factor = (currentTime - startTime) / effectiveDuration;
+                        factor = 1 - Math.max(0, Math.min(1, factor)); // Invert for hiding
+
+                        const scale = factor;
                         const matrix = new THREE.Matrix4();
                         matrix.compose(
-                            pos,
+                            verticesData[reverseIndex], // Use reverseIndex for position to match visual 'unzipping'
                             new THREE.Quaternion(),
-                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                            new THREE.Vector3(scale, scale, scale)
                         );
-                        vertices.setMatrixAt(index, matrix);
-                        vertices.instanceMatrix.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (index === 0) {
-                            vertices.visible = false;
-                        }
+                        vertices.setMatrixAt(reverseIndex, matrix);
+                        needsUpdate = true;
                     }
-                });
+
+                    if (needsUpdate) {
+                        vertices.instanceMatrix.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (vertices) vertices.visible = false;
+                    activeVerticesTween = null;
+                }
             });
         }
     }
@@ -1049,6 +1112,10 @@ function connectEdges() {
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = edgesMesh.geometry;
 
+    // Instant feedback
+    const btn = document.getElementById('connect-edges');
+    if (btn) btn.classList.toggle('active', !edgesMesh.visible);
+
     if (!edgesMesh.visible) {
         // Show with animation
         edgesData.forEach((edge, edgeIndex) => {
@@ -1069,19 +1136,39 @@ function connectEdges() {
             });
             geometry.attributes.visibility.needsUpdate = true;
         } else {
-            edgesData.forEach((edge, edgeIndex) => {
-                gsap.to(edgeVisibility, {
-                    [edgeIndex]: 1,
-                    duration: effectiveDuration,
-                    delay: edgeIndex * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
+            // Performance Fix: Single tween driving all instances
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (edgesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeEdgesTween) activeEdgesTween.kill();
+
+            activeEdgesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < edgesData.length; i++) {
+                        const startTime = i * delayPerItem;
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = Math.max(0, Math.min(1, val));
+
+                        edgeVisibility[i] = val;
+                        visAttr[i * 2] = val;
+                        visAttr[i * 2 + 1] = val;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
                         geometry.attributes.visibility.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeEdgesTween = null;
+                }
             });
         }
     } else {
@@ -1089,26 +1176,44 @@ function connectEdges() {
         if (MAX_TIME === 0) {
             edgesMesh.visible = false;
         } else {
-            const reverseCount = edgesData.length - 1;
-            edgesData.forEach((edge, edgeIndex) => {
-                const reverseDelay = (reverseCount - edgeIndex) * delayPerItem;
-                gsap.to(edgeVisibility, {
-                    [edgeIndex]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
-                        geometry.attributes.visibility.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (edgeIndex === 0) {
-                            edgesMesh.visible = false;
-                        }
+            // Performance Fix: Single tween driving all instances (Reverse)
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (edgesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeEdgesTween) activeEdgesTween.kill();
+
+            activeEdgesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!edgesMesh) return;
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < edgesData.length; i++) {
+                        // Reverse index logic
+                        const reverseIndex = (edgesData.length - 1) - i;
+                        const startTime = i * delayPerItem;
+
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = 1 - Math.max(0, Math.min(1, val)); // Invert
+
+                        edgeVisibility[reverseIndex] = val;
+                        visAttr[reverseIndex * 2] = val;
+                        visAttr[reverseIndex * 2 + 1] = val;
+                        needsUpdate = true;
                     }
-                });
+                    if (needsUpdate) {
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (edgesMesh) edgesMesh.visible = false;
+                    activeEdgesTween = null;
+                }
             });
         }
     }
@@ -1189,6 +1294,10 @@ function formFaces() {
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = facesMesh.geometry;
 
+    // Instant feedback
+    const btn = document.getElementById('form-faces');
+    if (btn) btn.classList.toggle('active', !facesMesh.visible);
+
     if (!facesMesh.visible) {
         // Show with animation
         facesData.forEach((face, faceIndex) => {
@@ -1212,20 +1321,40 @@ function formFaces() {
             });
             geometry.attributes.visibility.needsUpdate = true;
         } else {
-            facesData.forEach((face, faceIndex) => {
-                gsap.to(faceVisibility, {
-                    [faceIndex]: 1,
-                    duration: effectiveDuration,
-                    delay: faceIndex * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
+            // Performance Fix: Single tween driving all instances
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (facesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeFacesTween) activeFacesTween.kill();
+
+            activeFacesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < facesData.length; i++) {
+                        const startTime = i * delayPerItem;
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = Math.max(0, Math.min(1, val));
+
+                        faceVisibility[i] = val;
+                        visAttr[i * 3] = val;
+                        visAttr[i * 3 + 1] = val;
+                        visAttr[i * 3 + 2] = val;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
                         geometry.attributes.visibility.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeFacesTween = null;
+                }
             });
         }
     } else {
@@ -1234,28 +1363,48 @@ function formFaces() {
             facesMesh.visible = false;
             if (facesInnerMesh) facesInnerMesh.visible = false;
         } else {
-            const reverseCount = facesData.length - 1;
-            facesData.forEach((face, faceIndex) => {
-                const reverseDelay = (reverseCount - faceIndex) * delayPerItem;
-                gsap.to(faceVisibility, {
-                    [faceIndex]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
-                        geometry.attributes.visibility.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (faceIndex === 0) {
-                            facesMesh.visible = false;
-                            if (facesInnerMesh) facesInnerMesh.visible = false;
-                        }
+            // Performance Fix: Single tween driving all instances (Reverse)
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (facesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeFacesTween) activeFacesTween.kill();
+
+            activeFacesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!facesMesh) return;
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < facesData.length; i++) {
+                        // Reverse index logic
+                        const reverseIndex = (facesData.length - 1) - i;
+                        const startTime = i * delayPerItem;
+
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = 1 - Math.max(0, Math.min(1, val)); // Invert
+
+                        faceVisibility[reverseIndex] = val;
+                        visAttr[reverseIndex * 3] = val;
+                        visAttr[reverseIndex * 3 + 1] = val;
+                        visAttr[reverseIndex * 3 + 2] = val;
+                        needsUpdate = true;
                     }
-                });
+                    if (needsUpdate) {
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (facesMesh) {
+                        facesMesh.visible = false;
+                        if (facesInnerMesh) facesInnerMesh.visible = false;
+                    }
+                    activeFacesTween = null;
+                }
             });
         }
     }
@@ -1359,6 +1508,10 @@ function assembleMesh() {
         mesh.renderOrder = 2; // ensure assembled renders after faces
         scene.add(mesh);
 
+        // Instant feedback
+        const btn = document.getElementById('assemble-mesh');
+        if (btn) btn.classList.add('active');
+
         // Animate dither dissolve - duration equals slider value
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
         // Reset dissolve and kill any previous tweens
@@ -1379,6 +1532,10 @@ function assembleMesh() {
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
         gsap.killTweensOf(material.uniforms.dissolve);
 
+        // Instant feedback
+        const btn = document.getElementById('assemble-mesh');
+        if (btn) btn.classList.toggle('active', !mesh.visible);
+
         if (!mesh.visible) {
             // Show with dissolve-in
             material.uniforms.dissolve.value = 0;
@@ -1386,36 +1543,56 @@ function assembleMesh() {
             if (ASSEMBLY_DURATION === 0) {
                 material.uniforms.dissolve.value = 1;
             } else {
-                gsap.to(material.uniforms.dissolve, {
+                // Kill previous animation
+                if (activeMeshTween) activeMeshTween.kill();
+
+                activeMeshTween = gsap.to(material.uniforms.dissolve, {
                     value: 1,
-                    duration: ASSEMBLY_DURATION,
-                    ease: "none"
-                });
-            }
-        } else {
-            // Hide with dissolve-out
-            // Do not force-show faces if they were hidden
-            if (ASSEMBLY_DURATION === 0) {
-                material.uniforms.dissolve.value = 0;
-                mesh.visible = false;
-            } else {
-                gsap.to(material.uniforms.dissolve, {
-                    value: 0,
                     duration: ASSEMBLY_DURATION,
                     ease: "none",
                     onComplete: () => {
-                        mesh.visible = false;
+                        activeMeshTween = null;
                     }
                 });
             }
+        } else {
+            // Hide with dissolve animation
+            if (mesh) {
+                const material = mesh.material;
+
+                if (ASSEMBLY_DURATION === 0) {
+                    material.uniforms.dissolve.value = 0;
+                    mesh.visible = false;
+                } else {
+                    // Kill previous animation
+                    if (activeMeshTween) activeMeshTween.kill();
+
+                    activeMeshTween = gsap.to(material.uniforms.dissolve, {
+                        value: 0,
+                        duration: ASSEMBLY_DURATION,
+                        ease: "none",
+                        onComplete: () => {
+                            mesh.visible = false;
+                            activeMeshTween = null;
+                        }
+                    });
+                }
+            }
         }
     }
+
 }
 
 function resetScene() {
     clearObjects();
     document.getElementById('info-text').textContent = 'Click buttons to visualize 3D modeling concepts';
     updateInfo();
+
+    // Reset button states
+    ['show-vertices', 'connect-edges', 'form-faces', 'assemble-mesh'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove('active');
+    });
 }
 
 function clearObjects() {
@@ -1467,15 +1644,18 @@ function animate() {
 
     // Apply camera offset for panels (after OrbitControls update)
     // Only applies when settings panel is expanded (interactive state)
-    if (!isCollapsed) {
+    // And if the user has enabled the offset behavior
+    const offsetToggle = document.getElementById('camera-offset-toggle');
+    const offsetEnabled = offsetToggle ? offsetToggle.checked : true;
+
+    if (!isCollapsed && offsetEnabled) {
         if (currentMode === 'mobile') {
             // Mobile: Rotate around right axis (local X)
             // Use -20 degrees as per requirement
             camera.rotateX(THREE.MathUtils.degToRad(-20));
         } else {
             // Desktop: Rotate around local Up axis (Yaw)
-            // Use 15 degrees as per requirement (flipped from -15)
-            const angle = THREE.MathUtils.degToRad(15);
+            const angle = THREE.MathUtils.degToRad(-12);
             const up = camera.up.clone().normalize();
             const quat = new THREE.Quaternion().setFromAxisAngle(up, angle);
             camera.quaternion.premultiply(quat);
@@ -1544,35 +1724,19 @@ if ('serviceWorker' in navigator) {
 
     if (settingsPanel) {
         // Start with panel closed on mobile, open on desktop
-        isCollapsed = isMobile();
-
-        // Apply styles on load
+        // Initialize state
+        isCollapsed = isMobile(); // Default closed on mobile, open on desktop
         applyMobileStyles();
 
-        // Desktop collapse button handler
-        const collapseBtn = document.getElementById('settings-collapse-btn');
-        if (collapseBtn) {
-            collapseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Allow collapse button to working on both mobile and desktop
+        // Updated: Click handler for the *entire* header
+        const header = settingsPanel.querySelector('.settings-header');
+        if (header) {
+            header.addEventListener('click', (e) => {
+                // Toggle state
                 isCollapsed = !isCollapsed;
                 syncPanelState();
             });
         }
-
-        // Click handler to toggle settings panel on mobile (anywhere on the header except the button)
-        settingsPanel.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target.tagName === 'INPUT' || target.tagName === 'BUTTON') {
-                return; // Let form elements and the collapse button work normally
-            }
-
-            // Allow clicking the header area (on the "Settings" text) to toggle on mobile
-            if (isMobile()) {
-                isCollapsed = !isCollapsed;
-                syncPanelState();
-            }
-        });
     }
 
     // Reapply mobile styles on resize, but only sync state if mode changed
@@ -1618,14 +1782,8 @@ if ('serviceWorker' in navigator) {
             // Recalculate view based on current model's bounding box
             const { center, distance } = autoScaleAndPositionModel(currentGeometry);
 
-            // Update controls target
-            controls.target.copy(center);
-
-            // Position camera back from the center
-            const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
-            camera.position.copy(center).addScaledVector(cameraDirection, distance);
-
-            controls.update();
+            // Use the centralized camera update function
+            updateCameraView(center, distance);
         });
     }
 
