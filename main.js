@@ -207,6 +207,11 @@ let facesMesh = null;  // Merged faces mesh
 let facesInnerMesh = null; // Back-side faces for inside color
 let faceVisibility = [];  // Track individual face visibility for animation
 let mesh = null;
+// Animation State Tracking
+let activeVerticesTween = null;
+let activeEdgesTween = null;
+let activeFacesTween = null;
+let activeMeshTween = null;
 
 // ===== Custom Shader Material for Edges =====
 const edgeShaderMaterial = new THREE.ShaderMaterial({
@@ -949,31 +954,56 @@ function showVertices() {
 
         if (MAX_TIME === 0) {
             verticesData.forEach((pos, index) => {
-                vertexScales[index] = 1;
                 const matrix = new THREE.Matrix4();
                 matrix.compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
                 vertices.setMatrixAt(index, matrix);
             });
             vertices.instanceMatrix.needsUpdate = true;
         } else {
-            verticesData.forEach((pos, index) => {
-                gsap.to(vertexScales, {
-                    [index]: 1,
-                    duration: effectiveDuration,
-                    delay: index * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        if (!vertices) return;
+            // Performance Fix: Single tween driving all instances instead of N tweens
+            const animData = { progress: 0 };
+
+            // Kill previous animation
+            if (activeVerticesTween) activeVerticesTween.kill();
+
+            activeVerticesTween = gsap.to(animData, {
+                progress: 1,
+                duration: effectiveDuration + (verticesData.length * delayPerItem), // Total time covers all staggers
+                ease: "none",
+                onUpdate: () => {
+                    if (!vertices) return;
+
+                    const currentTime = animData.progress * (effectiveDuration + (verticesData.length * delayPerItem));
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < verticesData.length; i++) {
+                        // Calculate local progress for this item based on its start time
+                        const startTime = i * delayPerItem;
+                        // Map global time to local 0-1 factor
+                        let factor = (currentTime - startTime) / effectiveDuration;
+                        factor = Math.max(0, Math.min(1, factor)); // Clamp 0-1
+
+                        // Optimization: Only update if changing or not yet final
+                        // (Use tracking array to avoid redundant updates if desired, but this math is cheap)
+
+                        const scale = factor;
                         const matrix = new THREE.Matrix4();
                         matrix.compose(
-                            pos,
+                            verticesData[i],
                             new THREE.Quaternion(),
-                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                            new THREE.Vector3(scale, scale, scale)
                         );
-                        vertices.setMatrixAt(index, matrix);
+                        vertices.setMatrixAt(i, matrix);
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
                         vertices.instanceMatrix.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeVerticesTween = null;
+                }
             });
         }
     } else {
@@ -981,31 +1011,50 @@ function showVertices() {
         if (MAX_TIME === 0) {
             vertices.visible = false;
         } else {
-            const reverseCount = verticesData.length - 1;
-            verticesData.forEach((pos, index) => {
-                const reverseDelay = (reverseCount - index) * delayPerItem;
-                gsap.to(vertexScales, {
-                    [index]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        if (!vertices) return;
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (verticesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeVerticesTween) activeVerticesTween.kill();
+
+            activeVerticesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!vertices) return;
+
+                    const currentTime = animData.progress * totalDuration;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < verticesData.length; i++) {
+                        // Reverse index logic: last item starts first
+                        const reverseIndex = (verticesData.length - 1) - i;
+                        const startTime = i * delayPerItem; // Linear delay based on loop index
+
+                        // Map to local 0-1 factor (reversed: 1 -> 0)
+                        let factor = (currentTime - startTime) / effectiveDuration;
+                        factor = 1 - Math.max(0, Math.min(1, factor)); // Invert for hiding
+
+                        const scale = factor;
                         const matrix = new THREE.Matrix4();
                         matrix.compose(
-                            pos,
+                            verticesData[reverseIndex], // Use reverseIndex for position to match visual 'unzipping'
                             new THREE.Quaternion(),
-                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                            new THREE.Vector3(scale, scale, scale)
                         );
-                        vertices.setMatrixAt(index, matrix);
-                        vertices.instanceMatrix.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (index === 0) {
-                            vertices.visible = false;
-                        }
+                        vertices.setMatrixAt(reverseIndex, matrix);
+                        needsUpdate = true;
                     }
-                });
+
+                    if (needsUpdate) {
+                        vertices.instanceMatrix.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (vertices) vertices.visible = false;
+                    activeVerticesTween = null;
+                }
             });
         }
     }
@@ -1087,19 +1136,39 @@ function connectEdges() {
             });
             geometry.attributes.visibility.needsUpdate = true;
         } else {
-            edgesData.forEach((edge, edgeIndex) => {
-                gsap.to(edgeVisibility, {
-                    [edgeIndex]: 1,
-                    duration: effectiveDuration,
-                    delay: edgeIndex * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
+            // Performance Fix: Single tween driving all instances
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (edgesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeEdgesTween) activeEdgesTween.kill();
+
+            activeEdgesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < edgesData.length; i++) {
+                        const startTime = i * delayPerItem;
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = Math.max(0, Math.min(1, val));
+
+                        edgeVisibility[i] = val;
+                        visAttr[i * 2] = val;
+                        visAttr[i * 2 + 1] = val;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
                         geometry.attributes.visibility.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeEdgesTween = null;
+                }
             });
         }
     } else {
@@ -1107,26 +1176,44 @@ function connectEdges() {
         if (MAX_TIME === 0) {
             edgesMesh.visible = false;
         } else {
-            const reverseCount = edgesData.length - 1;
-            edgesData.forEach((edge, edgeIndex) => {
-                const reverseDelay = (reverseCount - edgeIndex) * delayPerItem;
-                gsap.to(edgeVisibility, {
-                    [edgeIndex]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
-                        geometry.attributes.visibility.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (edgeIndex === 0) {
-                            edgesMesh.visible = false;
-                        }
+            // Performance Fix: Single tween driving all instances (Reverse)
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (edgesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeEdgesTween) activeEdgesTween.kill();
+
+            activeEdgesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!edgesMesh) return;
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < edgesData.length; i++) {
+                        // Reverse index logic
+                        const reverseIndex = (edgesData.length - 1) - i;
+                        const startTime = i * delayPerItem;
+
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = 1 - Math.max(0, Math.min(1, val)); // Invert
+
+                        edgeVisibility[reverseIndex] = val;
+                        visAttr[reverseIndex * 2] = val;
+                        visAttr[reverseIndex * 2 + 1] = val;
+                        needsUpdate = true;
                     }
-                });
+                    if (needsUpdate) {
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (edgesMesh) edgesMesh.visible = false;
+                    activeEdgesTween = null;
+                }
             });
         }
     }
@@ -1234,20 +1321,40 @@ function formFaces() {
             });
             geometry.attributes.visibility.needsUpdate = true;
         } else {
-            facesData.forEach((face, faceIndex) => {
-                gsap.to(faceVisibility, {
-                    [faceIndex]: 1,
-                    duration: effectiveDuration,
-                    delay: faceIndex * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
+            // Performance Fix: Single tween driving all instances
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (facesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeFacesTween) activeFacesTween.kill();
+
+            activeFacesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < facesData.length; i++) {
+                        const startTime = i * delayPerItem;
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = Math.max(0, Math.min(1, val));
+
+                        faceVisibility[i] = val;
+                        visAttr[i * 3] = val;
+                        visAttr[i * 3 + 1] = val;
+                        visAttr[i * 3 + 2] = val;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
                         geometry.attributes.visibility.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeFacesTween = null;
+                }
             });
         }
     } else {
@@ -1256,28 +1363,48 @@ function formFaces() {
             facesMesh.visible = false;
             if (facesInnerMesh) facesInnerMesh.visible = false;
         } else {
-            const reverseCount = facesData.length - 1;
-            facesData.forEach((face, faceIndex) => {
-                const reverseDelay = (reverseCount - faceIndex) * delayPerItem;
-                gsap.to(faceVisibility, {
-                    [faceIndex]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
-                        geometry.attributes.visibility.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (faceIndex === 0) {
-                            facesMesh.visible = false;
-                            if (facesInnerMesh) facesInnerMesh.visible = false;
-                        }
+            // Performance Fix: Single tween driving all instances (Reverse)
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (facesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeFacesTween) activeFacesTween.kill();
+
+            activeFacesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!facesMesh) return;
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < facesData.length; i++) {
+                        // Reverse index logic
+                        const reverseIndex = (facesData.length - 1) - i;
+                        const startTime = i * delayPerItem;
+
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = 1 - Math.max(0, Math.min(1, val)); // Invert
+
+                        faceVisibility[reverseIndex] = val;
+                        visAttr[reverseIndex * 3] = val;
+                        visAttr[reverseIndex * 3 + 1] = val;
+                        visAttr[reverseIndex * 3 + 2] = val;
+                        needsUpdate = true;
                     }
-                });
+                    if (needsUpdate) {
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (facesMesh) {
+                        facesMesh.visible = false;
+                        if (facesInnerMesh) facesInnerMesh.visible = false;
+                    }
+                    activeFacesTween = null;
+                }
             });
         }
     }
@@ -1416,30 +1543,44 @@ function assembleMesh() {
             if (ASSEMBLY_DURATION === 0) {
                 material.uniforms.dissolve.value = 1;
             } else {
-                gsap.to(material.uniforms.dissolve, {
+                // Kill previous animation
+                if (activeMeshTween) activeMeshTween.kill();
+
+                activeMeshTween = gsap.to(material.uniforms.dissolve, {
                     value: 1,
-                    duration: ASSEMBLY_DURATION,
-                    ease: "none"
-                });
-            }
-        } else {
-            // Hide with dissolve-out
-            // Do not force-show faces if they were hidden
-            if (ASSEMBLY_DURATION === 0) {
-                material.uniforms.dissolve.value = 0;
-                mesh.visible = false;
-            } else {
-                gsap.to(material.uniforms.dissolve, {
-                    value: 0,
                     duration: ASSEMBLY_DURATION,
                     ease: "none",
                     onComplete: () => {
-                        mesh.visible = false;
+                        activeMeshTween = null;
                     }
                 });
             }
+        } else {
+            // Hide with dissolve animation
+            if (mesh) {
+                const material = mesh.material;
+
+                if (ASSEMBLY_DURATION === 0) {
+                    material.uniforms.dissolve.value = 0;
+                    mesh.visible = false;
+                } else {
+                    // Kill previous animation
+                    if (activeMeshTween) activeMeshTween.kill();
+
+                    activeMeshTween = gsap.to(material.uniforms.dissolve, {
+                        value: 0,
+                        duration: ASSEMBLY_DURATION,
+                        ease: "none",
+                        onComplete: () => {
+                            mesh.visible = false;
+                            activeMeshTween = null;
+                        }
+                    });
+                }
+            }
         }
     }
+
 }
 
 function resetScene() {
