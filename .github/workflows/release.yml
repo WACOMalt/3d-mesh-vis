@@ -30,12 +30,9 @@ jobs:
 
   build-web:
     # Run if Push event OR (Release event AND NOT Local Build)
-    if: |
-      needs.create-release.result == 'success' || 
-      (github.event_name == 'release' && !contains(github.event.release.body, '[Local Build]'))
-    needs: create-release
     # Use always() to run even if create-release was skipped (e.g. valid release event)
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'push' || !contains(github.event.release.body, '[Local Build]'))
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
