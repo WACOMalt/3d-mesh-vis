@@ -28,7 +28,7 @@ const scene = new THREE.Scene();
 // ===== Sky Shader Setup =====
 // Procedural sky shader
 const createSkyMesh = () => {
-    const vertexShader = `
+  const vertexShader = `
     varying vec3 vWorldPosition;
     void main() {
       vec4 worldPosition = modelMatrix * vec4(position, 1.0);
@@ -36,8 +36,8 @@ const createSkyMesh = () => {
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `;
-
-    const fragmentShader = `
+  
+  const fragmentShader = `
     precision highp float;
     varying vec3 vWorldPosition;
     uniform vec3 sunPosition;
@@ -73,22 +73,22 @@ const createSkyMesh = () => {
       gl_FragColor = vec4(skyColor, 1.0);
     }
   `;
-
-    const geometry = new THREE.SphereGeometry(1, 32, 32);
-    const material = new THREE.ShaderMaterial({
-        name: 'SkyShader',
-        side: THREE.BackSide,
-        depthWrite: false,
-        uniforms: {
-            sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
+  
+  const geometry = new THREE.SphereGeometry(1, 32, 32);
+  const material = new THREE.ShaderMaterial({
+    name: 'SkyShader',
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
             showHorizonCutoff: { value: 0.0 },
-            horizonColor: { value: new THREE.Color(0x333333) }
-        },
-        vertexShader: vertexShader,
-        fragmentShader: fragmentShader
-    });
-
-    return new THREE.Mesh(geometry, material);
+      horizonColor: { value: new THREE.Color(0x333333) }
+    },
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader
+  });
+  
+  return new THREE.Mesh(geometry, material);
 };
 
 const sky = createSkyMesh();
@@ -100,38 +100,39 @@ let sunAzimuth = 135;
 const sunVector = new THREE.Vector3();
 
 function updateSunPosition() {
-    const phi = THREE.MathUtils.degToRad(90 - sunElevation);
-    const theta = THREE.MathUtils.degToRad(sunAzimuth);
-    sunVector.setFromSphericalCoords(1, phi, theta);
-    sky.material.uniforms.sunPosition.value.copy(sunVector);
-
-    // Also update keyLight position to match sun (scaled to reasonable distance)
-    const sunDistance = 10;
-    keyLight.position.copy(sunVector).multiplyScalar(sunDistance);
+  const phi = THREE.MathUtils.degToRad(90 - sunElevation);
+  const theta = THREE.MathUtils.degToRad(sunAzimuth);
+  sunVector.setFromSphericalCoords(1, phi, theta);
+  sky.material.uniforms.sunPosition.value.copy(sunVector);
+  
+  // Also update keyLight position to match sun (scaled to reasonable distance)
+  const sunDistance = 10;
+  keyLight.position.copy(sunVector).multiplyScalar(sunDistance);
 }
 
 // Sky follows camera
 scene.add(sky);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const canvasContainer = document.getElementById('canvas-container');
+const camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
 camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
 renderer.setClearColor(0x333333);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.physicallyCorrectLights = true;
-document.getElementById('canvas-container').appendChild(renderer.domElement);
+canvasContainer.appendChild(renderer.domElement);
 
 // ===== Lighting Setup =====
 // Hemisphere light to match sky colors (blue top, warm bottom)
 const hemisphereLight = new THREE.HemisphereLight(
-    0x87ceeb, // sky color (blue)
-    0xffa644, // ground color (warm orange)
-    0.6       // intensity
+  0x87ceeb, // sky color (blue)
+  0xffa644, // ground color (warm orange)
+  0.6       // intensity
 );
 scene.add(hemisphereLight);
 
@@ -170,14 +171,14 @@ axesHelper.scale.set(0.1, 0.1, 0.1);
 // Floor axes helper with custom colors
 const floorAxesGeometry = new THREE.BufferGeometry();
 const floorAxesPositions = new Float32Array([
-    0, 0, 0, 6, 0, 0,  // X axis (red)
-    0, 0, 0, 0, 0, 0,  // Y axis (black)
-    0, 0, 0, 0, 0, 6   // Z axis (blue)
+    0, 0, 0,  6, 0, 0,  // X axis (red)
+    0, 0, 0,  0, 0, 0,  // Y axis (black)
+    0, 0, 0,  0, 0, 6   // Z axis (blue)
 ]);
 const floorAxesColors = new Float32Array([
-    1, 0, 0, 1, 0, 0,  // Red for X
-    0, 0, 0, 0, 0, 0,  // Black for Y
-    0, 0, 1, 0, 0, 1   // Blue for Z
+    1, 0, 0,  1, 0, 0,  // Red for X
+    0, 0, 0,  0, 0, 0,  // Black for Y
+    0, 0, 1,  0, 0, 1   // Blue for Z
 ]);
 floorAxesGeometry.setAttribute('position', new THREE.BufferAttribute(floorAxesPositions, 3));
 floorAxesGeometry.setAttribute('color', new THREE.BufferAttribute(floorAxesColors, 3));
@@ -351,12 +352,12 @@ function rotateLights(angle) {
         const z = pos.x * sin + pos.z * cos;
         light.position.set(x, pos.y, z);
     });
-
+    
     // Update shader uniforms if assembled mesh exists
     if (mesh && mesh.material && mesh.material.uniforms) {
         mesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
-
+    
     // Update shader uniforms if faces mesh exists
     if (facesMesh && facesMesh.material && facesMesh.material.uniforms) {
         facesMesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
@@ -403,7 +404,7 @@ function updateVertexGeometry() {
     if (vertices) {
         // Kill any running animations before updating geometry
         gsap.killTweensOf(vertexScales);
-
+        
         // Update geometry with new size
         vertices.geometry.dispose();
         vertices.geometry = new THREE.SphereGeometry(vertexSize, 5, 3);
@@ -464,7 +465,7 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
             } finally {
                 hideLoading();
             }
-
+            
             // Check if model actually loaded by verifying vertices exist
             if (!currentGeometry || currentGeometry.attributes.position.count === 0) {
                 alert('Error loading OBJ file. Make sure it\'s a valid OBJ file.');
@@ -510,7 +511,7 @@ async function loadPresetModel(key) {
 
     updateGeometry();
     resetScene();
-
+    
     // Check if model actually loaded by verifying vertices exist
     if (!currentGeometry || currentGeometry.attributes.position.count === 0) {
         alert('Could not load the OBJ model. Please try again.');
@@ -649,7 +650,7 @@ vertexSizeInput.addEventListener('input', (e) => {
     console.log('vertex-size INPUT event fired:', e.target.value);
     vertexSize = parseFloat(e.target.value);
     document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
-
+    
     // Debounce the geometry update to avoid lag while dragging
     clearTimeout(vertexSizeTimeout);
     vertexSizeTimeout = setTimeout(() => {
@@ -710,18 +711,18 @@ function autoScaleAndPositionModel(geometry) {
      * Returns object with center and required camera distance to view entire model
      */
     if (!geometry) return { center: new THREE.Vector3(0, 0, 0), distance: 3 };
-
+    
     // Calculate bounding box
     geometry.computeBoundingBox();
     const bbox = geometry.boundingBox;
     const bboxSize = bbox.getSize(new THREE.Vector3());
     const bboxMin = bbox.min;
-
+    
     console.log('Initial bounding box:', { min: bboxMin.clone(), size: bboxSize.clone() });
-
+    
     // Find longest dimension
     const maxDimension = Math.max(bboxSize.x, bboxSize.y, bboxSize.z);
-
+    
     // Determine scale factor
     let scaleFactor = 1.0;
     if (maxDimension > 10) {
@@ -729,9 +730,9 @@ function autoScaleAndPositionModel(geometry) {
     } else if (maxDimension < 5) {
         scaleFactor = 5 / maxDimension;
     }
-
+    
     console.log('Scale factor:', scaleFactor, 'Max dimension:', maxDimension);
-
+    
     // Apply scaling to all vertices
     if (scaleFactor !== 1.0) {
         const posAttr = geometry.attributes.position;
@@ -742,21 +743,21 @@ function autoScaleAndPositionModel(geometry) {
         }
         posAttr.needsUpdate = true;
     }
-
+    
     // Recalculate bounding box after scaling
     geometry.computeBoundingBox();
     const scaledBbox = geometry.boundingBox;
     const scaledBboxMin = scaledBbox.min;
     const scaledBboxSize = scaledBbox.getSize(new THREE.Vector3());
-
+    
     console.log('After scaling, new min Y:', scaledBboxMin.y);
-
+    
     // Calculate vertical offset to place bottom on floor (floor is at Y = -1)
     const floorY = -1;
     const verticalOffset = floorY - scaledBboxMin.y;
-
+    
     console.log('Vertical offset to apply:', verticalOffset);
-
+    
     // Apply vertical offset to all vertices
     if (Math.abs(verticalOffset) > 0.0001) {
         const posAttr = geometry.attributes.position;
@@ -767,7 +768,7 @@ function autoScaleAndPositionModel(geometry) {
         }
         posAttr.needsUpdate = true;
     }
-
+    
     // Verify final position and calculate center
     geometry.computeBoundingBox();
     const finalBbox = geometry.boundingBox;
@@ -775,13 +776,13 @@ function autoScaleAndPositionModel(geometry) {
     const finalBboxSize = finalBbox.getSize(new THREE.Vector3());
     console.log('Final bounding box min Y:', finalBbox.min.y, '(should be -1 for floor)');
     console.log('Bounding box center:', bboxCenter.clone());
-
+    
     // Calculate required camera distance to view entire model
     // Use the largest dimension of the bounding box
     const maxFinalDimension = Math.max(finalBboxSize.x, finalBboxSize.y, finalBboxSize.z);
     const cameraVFOV = 75; // vertical field of view in degrees
     const aspectRatio = window.innerWidth / window.innerHeight;
-
+    
     // Determine which FOV to use based on window aspect ratio
     let effectiveFOV;
     if (aspectRatio > 1) {
@@ -798,15 +799,15 @@ function autoScaleAndPositionModel(geometry) {
         const hFOVRad = 2 * Math.atan(Math.tan(vFOVRad / 2) * aspectRatio);
         effectiveFOV = THREE.MathUtils.radToDeg(hFOVRad);
     }
-
+    
     const fovRad = THREE.MathUtils.degToRad(effectiveFOV);
     // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
     const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
     // Add buffer (1.43x = 1.3 * 1.1 for comfortable viewing with extra space)
     const cameraDistance = requiredDistance * 1.43;
-
+    
     console.log('Aspect ratio:', aspectRatio, 'Effective FOV:', effectiveFOV, 'Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
-
+    
     return { center: bboxCenter, distance: cameraDistance };
 }
 
@@ -826,14 +827,14 @@ function updateGeometry() {
     // Apply auto-scaling and floor positioning to all geometries
     const result = autoScaleAndPositionModel(currentGeometry);
     const { center, distance } = result;
-
+    
     // Update camera target to center on the model
     controls.target.copy(center);
-
+    
     // Position camera back from the center to view entire model
     const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
     camera.position.copy(center).addScaledVector(cameraDirection, distance);
-
+    
     controls.update();
     extractData();
     updateInfo();
@@ -1015,11 +1016,11 @@ function connectEdges() {
         edgesData.forEach((edge, edgeIndex) => {
             const p1 = verticesData[edge[0]];
             const p2 = verticesData[edge[1]];
-
+            
             // Add two vertices per line
             positions.push(p1.x, p1.y, p1.z);
             positions.push(p2.x, p2.y, p2.z);
-
+            
             // Both vertices of the line share same visibility for this edge
             visibilityArray.push(0, 0);
         });
@@ -1275,13 +1276,13 @@ function assembleMesh() {
 
         // Create complete mesh with dither dissolve shader
         const geometry = currentGeometry.clone();
-
+        
         // Get base color from original material or use default
         let baseColor = new THREE.Color(0xffffff);
         if (currentMaterial && currentMaterial.color) {
             baseColor.copy(currentMaterial.color);
         }
-
+        
         // Custom shader material with dither dissolve effect and PBR
         const material = new THREE.ShaderMaterial({
             uniforms: {
@@ -1354,7 +1355,7 @@ function assembleMesh() {
             depthTest: true,
             depthWrite: true
         });
-
+        
         mesh = new THREE.Mesh(geometry, material);
         mesh.renderOrder = 2; // ensure assembled renders after faces
         scene.add(mesh);
@@ -1378,7 +1379,7 @@ function assembleMesh() {
         const material = mesh.material;
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
         gsap.killTweensOf(material.uniforms.dissolve);
-
+        
         if (!mesh.visible) {
             // Show with dissolve-in
             material.uniforms.dissolve.value = 0;
@@ -1423,7 +1424,7 @@ function clearObjects() {
     gsap.killTweensOf(vertexScales);
     gsap.killTweensOf(edgeVisibility);
     gsap.killTweensOf(faceVisibility);
-
+    
     if (vertices) {
         scene.remove(vertices);
         vertices = null;
@@ -1454,33 +1455,33 @@ function updateInfo() {
     document.getElementById('face-count').textContent = facesData.length;
 }
 
-// ===== Mobile & Desktop UI Management =====
-// Global state for access in animate loop
-let isCollapsed = false;
-const isMobile = () => window.innerWidth <= 535;
-let currentMode = isMobile() ? 'mobile' : 'desktop';
-
 // ===== Animation Loop =====
+function adjustCameraForPanels() {
+    const isMobileView = window.innerWidth <= 535;
+    
+    if (isMobileView) {
+        // On mobile, only rotate if settings panel is open
+        if (!isCollapsed) {
+            // Settings panel is open, rotate camera around its local right axis (pitch down)
+            const rotationAngle = THREE.MathUtils.degToRad(-20);
+            camera.rotateX(rotationAngle);
+        }
+        // If collapsed (panel closed), no rotation
+    } else {
+        // On desktop, only rotate if settings panel is open
+        if (!isCollapsed) {
+            const rotationAngle = THREE.MathUtils.degToRad(15);
+            camera.rotateOnWorldAxis(camera.up, rotationAngle);
+        }
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
-
-    // Apply camera offset for panels (after OrbitControls update)
-    // Only applies when settings panel is expanded (interactive state)
-    if (!isCollapsed) {
-        if (currentMode === 'mobile') {
-            // Mobile: Rotate around right axis (local X)
-            // Use -20 degrees as per requirement
-            camera.rotateX(THREE.MathUtils.degToRad(-20));
-        } else {
-            // Desktop: Rotate around local Up axis (Yaw)
-            // Use 15 degrees as per requirement (flipped from -15)
-            const angle = THREE.MathUtils.degToRad(15);
-            const up = camera.up.clone().normalize();
-            const quat = new THREE.Quaternion().setFromAxisAngle(up, angle);
-            camera.quaternion.premultiply(quat);
-        }
-    }
+    
+    // Adjust camera rotation for UI panels
+    adjustCameraForPanels();
 
     // Update navigation axes orientation
     const camQuat = camera.quaternion.clone();
@@ -1496,9 +1497,11 @@ animate();
 
 // ===== Window Resize Handler =====
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const width = canvasContainer.clientWidth;
+    const height = canvasContainer.clientHeight;
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
 });
 
@@ -1510,16 +1513,15 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker registration failed:', err));
 }
 
-// ===== UI Initialization & Event Handling =====
+// ===== Mobile & Desktop UI Management =====
+var isCollapsed = true; // Default to collapsed, will be set properly in initUI
+
 (function initUI() {
     const settingsPanel = document.getElementById('settings');
-
-    // Helper to apply offsets immediately on interaction (optional, but good for responsiveness)
-    function applyPanelCameraOffset() {
-        // We leave the continuous update to animate(), but we can ensure controls are fresh
-        controls.update();
-    }
-
+    const isMobile = () => window.innerWidth <= 535;
+    
+    // Track collapsed/expanded state independently from display mode
+    
     function syncPanelState() {
         // Apply the user's preference (collapsed or not) based on current layout
         if (isCollapsed) {
@@ -1530,7 +1532,7 @@ if ('serviceWorker' in navigator) {
             settingsPanel.classList.add('expanded');
         }
     }
-
+    
     function applyMobileStyles() {
         if (isMobile()) {
             settingsPanel.style.position = 'fixed';
@@ -1541,32 +1543,32 @@ if ('serviceWorker' in navigator) {
         // Sync the panel state after layout change
         syncPanelState();
     }
-
+    
     if (settingsPanel) {
         // Start with panel closed on mobile, open on desktop
         isCollapsed = isMobile();
-
+        
         // Apply styles on load
         applyMobileStyles();
-
+        
         // Desktop collapse button handler
         const collapseBtn = document.getElementById('settings-collapse-btn');
         if (collapseBtn) {
             collapseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Allow collapse button to working on both mobile and desktop
+                // Allow collapse button to work on both mobile and desktop
                 isCollapsed = !isCollapsed;
                 syncPanelState();
             });
         }
-
+        
         // Click handler to toggle settings panel on mobile (anywhere on the header except the button)
         settingsPanel.addEventListener('click', (e) => {
             const target = e.target;
             if (target.tagName === 'INPUT' || target.tagName === 'BUTTON') {
                 return; // Let form elements and the collapse button work normally
             }
-
+            
             // Allow clicking the header area (on the "Settings" text) to toggle on mobile
             if (isMobile()) {
                 isCollapsed = !isCollapsed;
@@ -1574,23 +1576,24 @@ if ('serviceWorker' in navigator) {
             }
         });
     }
-
+    
+    // Track current layout mode to prevent animation on non-mode-changing resizes
+    let currentMode = isMobile() ? 'mobile' : 'desktop';
+    
     // Reapply mobile styles on resize, but only sync state if mode changed
     window.addEventListener('resize', () => {
         if (settingsPanel) {
             const newMode = isMobile() ? 'mobile' : 'desktop';
             if (newMode !== currentMode) {
-                currentMode = newMode;
                 // Mode changed (mobile <-> desktop), apply layout change
                 // Temporarily disable transitions to prevent animation on breakpoint change
                 settingsPanel.style.transition = 'none';
-
                 const controlGroups = settingsPanel.querySelectorAll('.control-group');
                 controlGroups.forEach(el => el.style.transition = 'none');
-
+                
                 currentMode = newMode;
                 applyMobileStyles();
-
+                
                 // Re-enable transitions after a frame
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1610,24 +1613,24 @@ if ('serviceWorker' in navigator) {
     });
 
     // Recenter button functionality
-    const recenterBtn = document.getElementById('recenter-container');
+    const recenterBtn = document.getElementById('recenter-btn');
     if (recenterBtn) {
         recenterBtn.addEventListener('click', () => {
             if (!currentGeometry) return;
-
+            
             // Recalculate view based on current model's bounding box
             const { center, distance } = autoScaleAndPositionModel(currentGeometry);
-
+            
             // Update controls target
             controls.target.copy(center);
-
+            
             // Position camera back from the center
             const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
             camera.position.copy(center).addScaledVector(cameraDirection, distance);
-
+            
             controls.update();
         });
     }
-
+    
     console.log('UI initialized with state persistence');
 })();

@@ -37,9 +37,8 @@ npm start          # Start dev server at http://localhost:5678
 const isMobile = () => window.innerWidth <= 535;
 ```
 
-**UI State Management** (Global variables for `animate()` access, initialized in IIFE):
+**UI State Management** (in `main.js` IIFE at bottom):
 - `isCollapsed` - tracks settings panel state independently from layout
-- `currentMode` - tracks 'mobile' vs 'desktop' layout
 - `syncPanelState()` - applies `.collapsed`/`.expanded` classes based on state
 - `applyMobileStyles()` - sets layout-specific CSS, then syncs state
 - State persists across breakpoint changes via `currentMode` tracking

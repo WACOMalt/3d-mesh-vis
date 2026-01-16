@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/WACOMalt/3d-mesh-vis#readme",
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.22.1"
   },
   "devDependencies": {
     "http-server": "^14.1.1"
