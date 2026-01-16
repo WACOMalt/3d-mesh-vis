@@ -89,20 +89,70 @@
             display: block;
         }
 
+        button.active {
+            box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.4);
+        }
+
+        #controls,
+        #settings {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        input,
+        select {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
         #controls {
             position: absolute;
+
             top: 20px;
             left: 20px;
-            background: var(--panel-bg);
-            padding: 20px;
-            border-radius: 12px;
+            background: rgba(28, 26, 30, 0.85);
+            padding: 0;
+            /* Reset padding, handled by inner content */
+            border-radius: 16px;
             z-index: 100;
-            border: 1px solid var(--panel-border);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            box-shadow: var(--panel-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
             overflow: hidden;
             width: 440px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.35s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .controls-top-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px 10px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 15px;
+        }
+
+        .controls-top-section .settings-header {
+            flex: 1;
+            padding: 0;
+            background: none;
+            border: none;
+            cursor: default;
+        }
+
+        .controls-top-section .settings-header h3 {
+            font-size: 14px;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .controls-top-section .shape-select-group {
+            flex: 1;
+            margin: 0;
         }
 
         .control-group {
@@ -132,14 +182,27 @@
 
         select,
         input[type="file"] {
-            padding: 8px;
-            border: 1px solid var(--panel-border);
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-radius: 4px;
-            font-size: 14px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            font-size: 13px;
             cursor: pointer;
             width: 100%;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        select:hover,
+        input[type="file"]:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-color);
         }
 
         select:hover,
@@ -158,32 +221,43 @@
 
         button {
             padding: 10px 16px;
-            background: linear-gradient(135deg, var(--accent-color) 0%, rgba(var(--accent-rgb), 0.75) 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
+            background: rgba(108, 117, 125, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             transition: all 0.2s ease;
             flex: 1;
-            box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3);
+            box-shadow: none;
         }
 
         button:hover {
-            background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-color) 100%);
-            transform: translateY(-1px) scale(1.02);
-            box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.4);
+            background: rgba(108, 117, 125, 0.95);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transform: translateY(-1px);
         }
 
         button:active {
-            transform: translateY(0) scale(0.98);
-            box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.3);
+            transform: translateY(0);
+            background: rgba(108, 117, 125, 0.9);
         }
 
         button:focus-visible {
             outline: none;
-            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5), 0 4px 16px rgba(var(--accent-rgb), 0.4);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
+        }
+
+        /* Active State - PURPLE */
+        .toggle-btn.active,
+        button.active {
+            background: var(--accent-color) !important;
+            border-color: var(--accent-hover) !important;
+            color: #fff !important;
+            box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.4);
         }
 
         /* Recenter container & button */
@@ -413,100 +487,281 @@
             pointer-events: none;
         }
 
+        /* ===== SETTINGS PANEL (CONTROL DECK) ===== */
         #settings {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            background: var(--panel-bg);
-            padding: 20px;
-            border-radius: 12px;
+            background: rgba(28, 26, 30, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
             z-index: 100;
-            border: 1px solid var(--panel-border);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            box-shadow: var(--panel-shadow);
-            font-size: 14px;
-            width: 440px;
-        }
-
-        #settings h3 {
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            width: 320px;
             display: flex;
-            justify-content: flex-start;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.35s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .settings-header {
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            margin: 0;
-            padding: 8px 15px;
-            opacity: 0.9;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        #settings h3::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.3);
-            margin: 0 8px;
-        }
-
-        #settings .collapse-btn {
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             cursor: pointer;
-            font-size: 10px;
-            padding: 0;
+        }
+
+        .settings-header h3 {
             margin: 0;
-            display: inline-block;
-            transition: transform 0.3s ease;
-            line-height: 1;
-            flex-shrink: 0;
-            min-width: 16px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+            border: none;
+            padding: 0;
+            display: block;
+        }
+
+        .settings-header h3::after {
+            display: none;
+        }
+
+        .collapse-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease, color 0.2s ease;
+            font-size: 10px;
+        }
+
+        .collapse-btn:hover {
+            color: #fff;
+            background: transparent;
+        }
+
+        .settings-content {
+            padding: 16px;
+            overflow-y: auto;
+            max-height: 60vh;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .settings-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .settings-content::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        /* Groups */
+        .setting-group {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .group-header {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.45);
+            margin-bottom: 10px;
+            font-weight: 600;
+            padding-left: 2px;
+        }
+
+        /* Control Rows */
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 12px;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-row label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            margin: 0;
+            white-space: nowrap;
+            min-width: 80px;
+            font-weight: 500;
+        }
+
+        .range-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 8px 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: border-color 0.2s;
+        }
+
+        .range-wrapper:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .range-wrapper input[type="range"] {
+            flex: 1;
+            height: 4px;
+            margin: 0;
+            background: transparent;
+        }
+
+        .range-wrapper input[type="range"]::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .value-badge {
+            font-size: 11px;
+            font-family: inherit;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent-color);
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            min-width: 36px;
             text-align: center;
+            letter-spacing: 0.02em;
         }
 
-        #settings .collapse-btn:hover {
-            color: rgba(255, 255, 255, 1);
+        /* Toggle Grid */
+        .toggle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
         }
 
-        /* ===== DESKTOP LAYOUT RESET (override mobile) ===== */
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+
+        .color-picker-wrapper {
+            grid-column: span 1;
+            display: flex;
+            align-items: stretch;
+            height: 100%;
+        }
+
+        .color-picker-wrapper input[type="color"] {
+            width: 100%;
+            height: 100%;
+            min-height: 36px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Action Row (Reset) */
+        .action-row {
+            margin-top: 16px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid rgba(var(--accent-rgb), 0.4);
+            color: var(--accent-color);
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            background: rgba(var(--accent-rgb), 0.1);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        /* ===== DESKTOP LAYOUT ===== */
         @media (min-width: 536px) {
-            #settings {
-                position: absolute;
-                bottom: 20px;
-                left: 20px;
-                right: auto;
-                min-width: 440px;
-                border-radius: 8px;
-                max-height: none;
-                overflow: hidden;
-                border: 1px solid var(--panel-border);
-                border-bottom: 1px solid var(--panel-border);
-                transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-                padding: 20px;
-                cursor: auto;
-                background: var(--panel-bg);
-            }
-
             #settings.collapsed {
-                max-height: 40px;
-                overflow: hidden;
+                height: 52px !important;
+                width: 160px;
+                background: rgba(28, 26, 30, 0.6);
+                border-color: transparent;
             }
 
-            #settings .control-group {
-                transition: opacity 0.25s ease, transform 0.25s ease;
+            #settings.collapsed:hover {
+                background: rgba(28, 26, 30, 0.8);
+                border-color: rgba(255, 255, 255, 0.1);
             }
 
-            #settings.collapsed .control-group {
-                opacity: 0;
-                transform: translateY(-8px);
+            #settings.collapsed .settings-header {
+                border-bottom: 1px solid transparent;
+                padding-right: 14px;
             }
 
             #settings.collapsed .collapse-btn {
                 transform: rotate(180deg);
+                background: transparent;
+                border-color: transparent;
             }
 
-            #settings::before {
+            #settings.collapsed .settings-content {
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s;
+            }
+
+            #settings::before,
+            #settings::after {
                 display: none;
             }
 
@@ -522,6 +777,8 @@
                 overflow-y: auto;
             }
 
+            /* Preserved Top Control Bar Styles */
+            /* Preserved Top Control Bar Styles */
             #controls {
                 position: fixed;
                 top: 0;
@@ -531,10 +788,59 @@
                 max-width: 100%;
                 border-radius: 0;
                 border-bottom: 1px solid var(--panel-border);
-                padding: 8px 10px !important;
+                padding: 0 !important;
                 margin: 0;
                 z-index: 200;
                 box-sizing: border-box;
+            }
+
+            .controls-top-section {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 8px 12px;
+                background: rgba(0, 0, 0, 0.2);
+            }
+
+            .controls-top-section .settings-header {
+                flex: 1;
+                background: none;
+                border: none;
+                padding: 0;
+            }
+
+            .controls-top-section .settings-header h3 {
+                font-size: 14px;
+                margin: 0;
+                white-space: nowrap;
+            }
+
+            .shape-select-group {
+                flex: 1;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Stats / Bottom elements padding margin reduction */
+            .control-group {
+                margin-bottom: 10px;
+            }
+
+            /* Specifically target the container of "Vertices/Edges/Faces" */
+            #controls .control-group:last-child {
+                padding-bottom: 5px !important;
+                margin-bottom: 0 !important;
+            }
+
+            /* File Input wrapper padding */
+            #controls .control-group:nth-child(2) {
+                padding: 5px 12px !important;
+                margin-bottom: 5px;
+            }
+
+            /* Button group wrapper padding */
+            #controls .control-group:nth-child(3) {
+                padding: 0 12px !important;
             }
 
             .control-group {
@@ -543,11 +849,6 @@
 
             #controls h3 {
                 display: block;
-            }
-
-            #controls>.control-group:nth-child(2),
-            #controls>.control-group:nth-child(3) {
-                margin-bottom: 15px;
             }
 
             #controls label {
@@ -575,6 +876,12 @@
                 min-width: auto;
             }
 
+            #controls>.control-group:nth-child(2),
+            #controls>.control-group:nth-child(3) {
+                margin-bottom: 15px;
+            }
+
+            /* New Settings Bottom Sheet Styles */
             #settings {
                 position: fixed;
                 bottom: 0;
@@ -582,17 +889,15 @@
                 right: 0;
                 width: 100%;
                 max-width: none;
-                border-radius: 16px 16px 0 0;
+                border-radius: 20px 20px 0 0;
                 z-index: 300;
-                background: var(--panel-bg);
                 border: 1px solid var(--panel-border);
                 border-bottom: none;
-                max-height: 70vh;
-                overflow-y: auto;
-                transform: translateY(calc(100% - 40px));
-                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                max-height: 85vh;
+                height: auto;
+                transform: translateY(100%);
                 padding: 0;
-                cursor: pointer;
+                background: var(--panel-bg);
             }
 
             #settings.expanded {
@@ -600,83 +905,26 @@
             }
 
             #settings.collapsed {
-                transform: translateY(calc(100% - 40px));
+                transform: translateY(calc(100% - 54px));
+                background: var(--panel-bg);
             }
 
-            #settings::before {
-                display: none;
+            #settings.collapsed .settings-header {
+                justify-content: center;
             }
 
-            #settings>* {
-                padding: 0 15px;
+            #settings.collapsed .settings-header h3 {
+                opacity: 0.8;
             }
 
-            #settings>.control-group:first-of-type {
-                padding-top: 10px;
-            }
-
-            #settings>.control-group:last-child {
-                padding-bottom: 30px;
-            }
-
-            #settings>.control-group {
-                margin-bottom: 10px;
-            }
-
-            .control-group label {
-                font-size: 12px;
-                display: block;
-            }
-
-            #settings input[type="range"]::-webkit-slider-thumb {
-                width: 20px;
-                height: 20px;
-            }
-
-            #settings input[type="range"]::-moz-range-thumb {
-                width: 20px;
-                height: 20px;
-            }
-
-            #settings input[type="color"] {
-                width: 50px;
-                height: 36px;
-            }
-
-            #settings button {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-
-            #settings>.control-group:nth-child(10),
-            #settings>.control-group:nth-child(11),
-            #settings>.control-group:nth-child(12) {
-                display: inline-block;
-                width: calc(33.333% - 10px);
-                margin-right: 15px;
-                margin-bottom: 10px;
-                vertical-align: top;
-            }
-
-            #settings>.control-group:nth-child(12) {
-                margin-right: 0;
-            }
-
-            #settings>.control-group:nth-child(10) button,
-            #settings>.control-group:nth-child(11) button,
-            #settings>.control-group:nth-child(12) button {
-                width: 100%;
+            .settings-content {
+                padding-bottom: 40px;
+                /* Safe area */
             }
 
             #canvas-container {
                 margin-top: 60px;
                 height: calc(100vh - 60px);
-            }
-
-            #settings::after {
-                content: '';
-                display: block;
-                height: 30px;
             }
         }
     </style>
@@ -703,39 +951,43 @@
     <div id="canvas-container"></div>
 
     <div id="controls" class="noise-overlay">
-        <div class="control-group">
-            <h3>3D Mesh Visualizer</h3>
+        <div class="controls-top-section">
+            <div class="settings-header">
+                <h3>3D Mesh Visualizer</h3>
+            </div>
+
+            <div class="control-group shape-select-group">
+                <select id="shape-select">
+                    <option value="cube">Cube</option>
+                    <option value="cylinder">Cylinder</option>
+                    <option value="cone">Cone</option>
+                    <option value="sphere">Sphere</option>
+                    <option value="obj">Load OBJ File</option>
+                </select>
+            </div>
         </div>
 
-        <div class="control-group">
-            <select id="shape-select">
-                <option value="cube">Cube</option>
-                <option value="cylinder">Cylinder</option>
-                <option value="cone">Cone</option>
-                <option value="sphere">Sphere</option>
-                <option value="obj">Load OBJ File</option>
-            </select>
+        <div class="control-group" style="padding: 0 20px;">
+            <input type="file" id="obj-file" accept=".obj" style="display:none; width: 100%;">
         </div>
 
-        <div class="control-group">
-            <input type="file" id="obj-file" accept=".obj" style="display:none;">
-        </div>
-
-        <div class="control-group">
+        <div class="control-group" style="padding: 0 20px;">
             <div class="button-group">
-                <button id="show-vertices">Vertices</button>
-                <button id="connect-edges">Edges</button>
-                <button id="form-faces">Faces</button>
-                <button id="assemble-mesh">Mesh</button>
+                <button id="show-vertices" class="toggle-btn">Vertices</button>
+                <button id="connect-edges" class="toggle-btn">Edges</button>
+                <button id="form-faces" class="toggle-btn">Faces</button>
+                <button id="assemble-mesh" class="toggle-btn">Mesh</button>
                 <button id="reset">Reset</button>
             </div>
         </div>
 
         <div class="control-group"
-            style="margin-bottom: 0; font-size: 12px; color: var(--text-secondary); text-align: center;">
-            <span>Vertices: <strong id="vertex-count" style="color: var(--text-primary);">0</strong>, Edges: <strong
-                    id="edge-count" style="color: var(--text-primary);">0</strong>, Faces: <strong id="face-count"
-                    style="color: var(--text-primary);">0</strong></span>
+            style="padding: 0 20px 15px 20px; font-size: 11px; color: rgba(255,255,255,0.6); text-align: center; margin-bottom: 0;">
+            <span style="display: flex; gap: 12px; justify-content: center;">
+                <span>Verts: <strong id="vertex-count" style="color: var(--accent-color);">0</strong></span>
+                <span>Edges: <strong id="edge-count" style="color: var(--accent-color);">0</strong></span>
+                <span>Faces: <strong id="face-count" style="color: var(--accent-color);">0</strong></span>
+            </span>
         </div>
     </div>
 
@@ -747,58 +999,82 @@
     </div>
 
     <div id="settings" class="noise-overlay">
-        <h3><span>Settings</span><button class="collapse-btn" id="settings-collapse-btn" title="Collapse">▼</button>
-        </h3>
-
-        <div class="control-group">
-            <label for="lighting-rotation">Lighting Rotation:
-                <span class="slider-value" id="lighting-rotation-value">180°</span>
-            </label>
-            <input type="range" id="lighting-rotation" min="0" max="360" value="180">
+        <div class="settings-header">
+            <h3>Settings</h3>
+            <button class="collapse-btn" id="settings-collapse-btn" title="Collapse">▼</button>
         </div>
 
-        <div class="control-group">
-            <label for="skybox-rotation">Skybox Rotation:
-                <span class="slider-value" id="skybox-rotation-value">212°</span>
-            </label>
-            <input type="range" id="skybox-rotation" min="0" max="360" value="212">
-        </div>
+        <div class="settings-content">
+            <!-- GROUP: MODEL -->
+            <div class="setting-group">
+                <div class="group-header">Model</div>
 
-        <div class="control-group">
-            <label for="vertex-size">Vertex Size:
-                <span class="slider-value" id="vertex-size-value">0.05</span>
-            </label>
-            <input type="range" id="vertex-size" min="0.01" max="0.1" value="0.05" step="any">
-        </div>
+                <!-- Vertex Size -->
+                <div class="control-row">
+                    <label for="vertex-size">Vertex Size</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="vertex-size" min="0.01" max="0.1" value="0.05" step="any">
+                        <span class="value-badge" id="vertex-size-value">0.05</span>
+                    </div>
+                </div>
+            </div>
 
-        <div class="control-group">
-            <label for="animation-max-time">Animation Duration:
-                <span class="slider-value" id="animation-max-time-value">2s</span>
-            </label>
-            <input type="range" id="animation-max-time" min="0" max="10" value="2" step="any">
-        </div>
+            <!-- GROUP: SCENE -->
+            <div class="setting-group">
+                <div class="group-header">Scene</div>
 
-        <div class="control-group center-content divider-top">
-            <button id="toggle-floor-helpers">Toggle Grid</button>
-        </div>
+                <!-- Lighting Rotation -->
+                <div class="control-row">
+                    <label for="lighting-rotation">Light Rotation</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="lighting-rotation" min="0" max="360" value="180">
+                        <span class="value-badge" id="lighting-rotation-value">180°</span>
+                    </div>
+                </div>
 
-        <div class="control-group center-content">
-            <button id="toggle-background">Toggle Skybox</button>
-        </div>
+                <!-- Skybox Rotation -->
+                <div class="control-row">
+                    <label for="skybox-rotation">Sky Rotation</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="skybox-rotation" min="0" max="360" value="212">
+                        <span class="value-badge" id="skybox-rotation-value">212°</span>
+                    </div>
+                </div>
 
-        <div class="control-group center-content">
-            <button id="toggle-skybox-bottom" style="background: rgba(108, 117, 125, 0.8);">Toggle Skybox
-                Bottom</button>
-        </div>
+                <!-- Animation Duration -->
+                <div class="control-row">
+                    <label for="animation-max-time">Anim Duration</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="animation-max-time" min="0" max="10" value="2" step="any">
+                        <span class="value-badge" id="animation-max-time-value">2s</span>
+                    </div>
+                </div>
 
-        <div class="control-group center-content divider-top">
-            <label for="bg-color">Background Color:</label>
-            <input type="color" id="bg-color" value="#333333"
-                style="width: 60px; height: 40px; cursor: pointer; border: none; border-radius: 4px;">
-        </div>
+                <!-- Panel Offset Checkbox -->
+                <div class="control-row">
+                    <label for="camera-offset-toggle">Panel View Offset</label>
+                    <div style="flex: 1; text-align: right;">
+                        <input type="checkbox" id="camera-offset-toggle" checked
+                            style="width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent-color);">
+                    </div>
+                </div>
 
-        <div class="control-group center-content">
-            <button id="settings-reset">Reset Settings</button>
+                <!-- Toggles Grid (2 columns) -->
+                <div class="toggle-grid">
+                    <button id="toggle-background" class="toggle-btn" title="Toggle Skybox">Skybox</button>
+                    <button id="toggle-skybox-bottom" class="toggle-btn" title="Toggle Floor">Floor</button>
+                    <button id="toggle-floor-helpers" class="toggle-btn" title="Toggle Grid">Grid</button>
+                    <!-- Background Color -->
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="bg-color" value="#333333" title="Background Color">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reset Action -->
+            <div class="action-row">
+                <button id="settings-reset" class="action-btn">Reset All Settings</button>
+            </div>
         </div>
     </div>
 

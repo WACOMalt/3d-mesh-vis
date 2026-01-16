@@ -552,6 +552,12 @@ async function loadCustomModelsFromFile() {
             option.textContent = title;
             selectEl.appendChild(option);
         });
+
+        // Ensure "Load OBJ File" is always at the bottom
+        const objOption = selectEl.querySelector('option[value="obj"]');
+        if (objOption) {
+            selectEl.appendChild(objOption); // Moves it to the end
+        }
     } catch (error) {
         console.warn('Failed to load custom models list:', error);
     }
@@ -623,13 +629,13 @@ document.getElementById('settings-reset').addEventListener('click', () => {
     // Toggles
     gridHelper.visible = true;
     floorAxesHelper.visible = true;
-    document.getElementById('toggle-floor-helpers').style.background = 'rgba(0, 123, 255, 0.8)';
+    // document.getElementById('toggle-floor-helpers').classList.add('active'); // Handled by init block below
 
     sky.visible = true;
-    document.getElementById('toggle-background').style.background = 'rgba(0, 123, 255, 0.8)';
+    // document.getElementById('toggle-background').classList.add('active'); // Handled by init block below
 
     sky.material.uniforms.showHorizonCutoff.value = 0.0;
-    document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+    // document.getElementById('toggle-skybox-bottom').classList.remove('active'); // Handled by init block below
 });
 
 let vertexSizeTimeout;
@@ -668,25 +674,24 @@ document.getElementById('toggle-floor-helpers').addEventListener('click', () => 
     floorHelpersVisible = !floorHelpersVisible;
     gridHelper.visible = floorHelpersVisible;
     floorAxesHelper.visible = floorHelpersVisible;
-    const button = document.getElementById('toggle-floor-helpers');
-    button.style.background = floorHelpersVisible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-floor-helpers').classList.toggle('active', floorHelpersVisible);
 });
 
 document.getElementById('toggle-background').addEventListener('click', () => {
     sky.visible = !sky.visible;
-    const button = document.getElementById('toggle-background');
-    button.style.background = sky.visible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-background').classList.toggle('active', sky.visible);
 });
 
 document.getElementById('toggle-skybox-bottom').addEventListener('click', () => {
     const currentValue = sky.material.uniforms.showHorizonCutoff.value;
     sky.material.uniforms.showHorizonCutoff.value = currentValue > 0.5 ? 0.0 : 1.0;
-    const button = document.getElementById('toggle-skybox-bottom');
-    button.style.background = sky.material.uniforms.showHorizonCutoff.value > 0.5 ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-skybox-bottom').classList.toggle('active', sky.material.uniforms.showHorizonCutoff.value > 0.5);
 });
 
-// Initialize toggle state to off (bottom hidden)
-document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+// Initialize toggle styles
+document.getElementById('toggle-floor-helpers').classList.toggle('active', floorHelpersVisible);
+document.getElementById('toggle-background').classList.toggle('active', sky.visible);
+document.getElementById('toggle-skybox-bottom').classList.toggle('active', sky.material.uniforms.showHorizonCutoff.value > 0.5);
 
 // ===== Color Picker =====
 const bgColorInput = document.getElementById('bg-color');
@@ -802,8 +807,8 @@ function autoScaleAndPositionModel(geometry) {
     const fovRad = THREE.MathUtils.degToRad(effectiveFOV);
     // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
     const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
-    // Add buffer (1.43x = 1.3 * 1.1 for comfortable viewing with extra space)
-    const cameraDistance = requiredDistance * 1.43;
+    // Add buffer (increased to 2.0 to handle diagonals of blocky shapes like cubes)
+    const cameraDistance = requiredDistance * 2.0;
 
     console.log('Aspect ratio:', aspectRatio, 'Effective FOV:', effectiveFOV, 'Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
 
@@ -823,10 +828,17 @@ function updateGeometry() {
             return;
         }
     }
-    // Apply auto-scaling and floor positioning to all geometries
     const result = autoScaleAndPositionModel(currentGeometry);
     const { center, distance } = result;
 
+    // Use centralized camera update
+    updateCameraView(center, distance);
+
+    extractData();
+    updateInfo();
+}
+
+function updateCameraView(center, distance) {
     // Update camera target to center on the model
     controls.target.copy(center);
 
@@ -835,8 +847,6 @@ function updateGeometry() {
     camera.position.copy(center).addScaledVector(cameraDirection, distance);
 
     controls.update();
-    extractData();
-    updateInfo();
 }
 
 function extractData() {
@@ -921,6 +931,10 @@ function showVertices() {
     const itemCount = verticesData.length;
     const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
+
+    // Instant feedback
+    const btn = document.getElementById('show-vertices');
+    if (btn) btn.classList.toggle('active', !vertices.visible);
 
     if (!vertices.visible) {
         // Show with animation
@@ -1048,6 +1062,10 @@ function connectEdges() {
     const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = edgesMesh.geometry;
+
+    // Instant feedback
+    const btn = document.getElementById('connect-edges');
+    if (btn) btn.classList.toggle('active', !edgesMesh.visible);
 
     if (!edgesMesh.visible) {
         // Show with animation
@@ -1188,6 +1206,10 @@ function formFaces() {
     const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = facesMesh.geometry;
+
+    // Instant feedback
+    const btn = document.getElementById('form-faces');
+    if (btn) btn.classList.toggle('active', !facesMesh.visible);
 
     if (!facesMesh.visible) {
         // Show with animation
@@ -1359,6 +1381,10 @@ function assembleMesh() {
         mesh.renderOrder = 2; // ensure assembled renders after faces
         scene.add(mesh);
 
+        // Instant feedback
+        const btn = document.getElementById('assemble-mesh');
+        if (btn) btn.classList.add('active');
+
         // Animate dither dissolve - duration equals slider value
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
         // Reset dissolve and kill any previous tweens
@@ -1378,6 +1404,10 @@ function assembleMesh() {
         const material = mesh.material;
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
         gsap.killTweensOf(material.uniforms.dissolve);
+
+        // Instant feedback
+        const btn = document.getElementById('assemble-mesh');
+        if (btn) btn.classList.toggle('active', !mesh.visible);
 
         if (!mesh.visible) {
             // Show with dissolve-in
@@ -1416,6 +1446,12 @@ function resetScene() {
     clearObjects();
     document.getElementById('info-text').textContent = 'Click buttons to visualize 3D modeling concepts';
     updateInfo();
+
+    // Reset button states
+    ['show-vertices', 'connect-edges', 'form-faces', 'assemble-mesh'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove('active');
+    });
 }
 
 function clearObjects() {
@@ -1467,15 +1503,18 @@ function animate() {
 
     // Apply camera offset for panels (after OrbitControls update)
     // Only applies when settings panel is expanded (interactive state)
-    if (!isCollapsed) {
+    // And if the user has enabled the offset behavior
+    const offsetToggle = document.getElementById('camera-offset-toggle');
+    const offsetEnabled = offsetToggle ? offsetToggle.checked : true;
+
+    if (!isCollapsed && offsetEnabled) {
         if (currentMode === 'mobile') {
             // Mobile: Rotate around right axis (local X)
             // Use -20 degrees as per requirement
             camera.rotateX(THREE.MathUtils.degToRad(-20));
         } else {
             // Desktop: Rotate around local Up axis (Yaw)
-            // Use 15 degrees as per requirement (flipped from -15)
-            const angle = THREE.MathUtils.degToRad(15);
+            const angle = THREE.MathUtils.degToRad(-12);
             const up = camera.up.clone().normalize();
             const quat = new THREE.Quaternion().setFromAxisAngle(up, angle);
             camera.quaternion.premultiply(quat);
@@ -1544,35 +1583,19 @@ if ('serviceWorker' in navigator) {
 
     if (settingsPanel) {
         // Start with panel closed on mobile, open on desktop
-        isCollapsed = isMobile();
-
-        // Apply styles on load
+        // Initialize state
+        isCollapsed = isMobile(); // Default closed on mobile, open on desktop
         applyMobileStyles();
 
-        // Desktop collapse button handler
-        const collapseBtn = document.getElementById('settings-collapse-btn');
-        if (collapseBtn) {
-            collapseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Allow collapse button to working on both mobile and desktop
+        // Updated: Click handler for the *entire* header
+        const header = settingsPanel.querySelector('.settings-header');
+        if (header) {
+            header.addEventListener('click', (e) => {
+                // Toggle state
                 isCollapsed = !isCollapsed;
                 syncPanelState();
             });
         }
-
-        // Click handler to toggle settings panel on mobile (anywhere on the header except the button)
-        settingsPanel.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target.tagName === 'INPUT' || target.tagName === 'BUTTON') {
-                return; // Let form elements and the collapse button work normally
-            }
-
-            // Allow clicking the header area (on the "Settings" text) to toggle on mobile
-            if (isMobile()) {
-                isCollapsed = !isCollapsed;
-                syncPanelState();
-            }
-        });
     }
 
     // Reapply mobile styles on resize, but only sync state if mode changed
@@ -1618,14 +1641,8 @@ if ('serviceWorker' in navigator) {
             // Recalculate view based on current model's bounding box
             const { center, distance } = autoScaleAndPositionModel(currentGeometry);
 
-            // Update controls target
-            controls.target.copy(center);
-
-            // Position camera back from the center
-            const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
-            camera.position.copy(center).addScaledVector(cameraDirection, distance);
-
-            controls.update();
+            // Use the centralized camera update function
+            updateCameraView(center, distance);
         });
     }
 
