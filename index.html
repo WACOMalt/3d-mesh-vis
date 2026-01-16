@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="description" content="Interactive 3D visualization tool for exploring vertices, edges, faces, and mesh assembly">
+    <meta name="description"
+        content="Interactive 3D visualization tool for exploring vertices, edges, faces, and mesh assembly">
     <meta name="theme-color" content="#6B2D5B">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,6 +25,7 @@
             font-display: swap;
             src: url('./fonts/Inter-Regular.woff2') format('woff2');
         }
+
         @font-face {
             font-family: 'Inter';
             font-style: normal;
@@ -30,6 +33,7 @@
             font-display: swap;
             src: url('./fonts/Inter-Medium.woff2') format('woff2');
         }
+
         @font-face {
             font-family: 'Inter';
             font-style: normal;
@@ -126,7 +130,8 @@
             color: var(--text-secondary);
         }
 
-        select, input[type="file"] {
+        select,
+        input[type="file"] {
             padding: 8px;
             border: 1px solid var(--panel-border);
             background: rgba(255, 255, 255, 0.1);
@@ -137,7 +142,8 @@
             width: 100%;
         }
 
-        select:hover, input[type="file"]:hover {
+        select:hover,
+        input[type="file"]:hover {
             background: rgba(255, 255, 255, 0.15);
         }
 
@@ -180,48 +186,77 @@
             box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5), 0 4px 16px rgba(var(--accent-rgb), 0.4);
         }
 
-        /* Recenter button */
-        #recenter-btn {
+        /* Recenter container & button */
+        #recenter-container {
             position: absolute;
-            top: 235px;
+            top: 220px;
             left: 20px;
-            height: 32px;
-            padding: 0 12px;
-            border-radius: 16px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: auto;
+            /* Enable clicks */
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+
+        #recenter-container:hover {
+            opacity: 1;
+        }
+
+        #recenter-btn {
+            width: 40px;
+            height: 40px;
+            padding: 0 0 2px 0;
+            /* Slight bottom adjustment for visual centering */
+            border-radius: 50%;
             flex: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            font-size: 12px;
-            line-height: 1;
-            z-index: 100;
+            font-size: 20px;
+            line-height: normal;
+            /* Fix vertical alignment */
             background: linear-gradient(135deg, var(--accent-color) 0%, rgba(var(--accent-rgb), 0.75) 100%);
             box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3);
+            pointer-events: none;
+            /* Let container handle interaction */
+            transition: all 0.2s ease;
         }
 
-        #recenter-btn .icon {
-            font-size: 16px;
-        }
-
-        #recenter-btn:hover {
+        #recenter-container:hover #recenter-btn {
             background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-color) 100%);
+            transform: translateY(-1px) scale(1.02);
             box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.4);
         }
 
-        #recenter-btn:active {
-            transform: scale(0.95);
+        #recenter-container:active #recenter-btn {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.3);
+        }
+
+        .recenter-label {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            /* Strong shadow for readability over 3D */
+            pointer-events: none;
+            user-select: none;
         }
 
         @media (max-width: 535px) {
-            #recenter-btn {
-                top: 175px;
+            #recenter-container {
+                top: 170px;
             }
         }
 
         @media (min-width: 536px) {
-            #recenter-btn {
-                top: 235px;
+            #recenter-container {
+                top: 220px;
             }
         }
 
@@ -270,7 +305,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-text {
@@ -312,10 +349,10 @@
         input[type="range"]::-webkit-slider-runnable-track {
             height: 8px;
             border-radius: 4px;
-            background: linear-gradient(to right, 
-                var(--accent-color) 0%, 
-                rgba(var(--accent-rgb), 0.3) 50%, 
-                rgba(255, 255, 255, 0.1) 100%);
+            background: linear-gradient(to right,
+                    var(--accent-color) 0%,
+                    rgba(var(--accent-rgb), 0.3) 50%,
+                    rgba(255, 255, 255, 0.1) 100%);
         }
 
         input[type="range"]::-webkit-slider-thumb {
@@ -508,8 +545,8 @@
                 display: block;
             }
 
-            #controls > .control-group:nth-child(2),
-            #controls > .control-group:nth-child(3) {
+            #controls>.control-group:nth-child(2),
+            #controls>.control-group:nth-child(3) {
                 margin-bottom: 15px;
             }
 
@@ -570,19 +607,19 @@
                 display: none;
             }
 
-            #settings > * {
+            #settings>* {
                 padding: 0 15px;
             }
 
-            #settings > .control-group:first-of-type {
+            #settings>.control-group:first-of-type {
                 padding-top: 10px;
             }
 
-            #settings > .control-group:last-child {
+            #settings>.control-group:last-child {
                 padding-bottom: 30px;
             }
 
-            #settings > .control-group {
+            #settings>.control-group {
                 margin-bottom: 10px;
             }
 
@@ -611,9 +648,9 @@
                 font-size: 12px;
             }
 
-            #settings > .control-group:nth-child(10),
-            #settings > .control-group:nth-child(11),
-            #settings > .control-group:nth-child(12) {
+            #settings>.control-group:nth-child(10),
+            #settings>.control-group:nth-child(11),
+            #settings>.control-group:nth-child(12) {
                 display: inline-block;
                 width: calc(33.333% - 10px);
                 margin-right: 15px;
@@ -621,13 +658,13 @@
                 vertical-align: top;
             }
 
-            #settings > .control-group:nth-child(12) {
+            #settings>.control-group:nth-child(12) {
                 margin-right: 0;
             }
 
-            #settings > .control-group:nth-child(10) button,
-            #settings > .control-group:nth-child(11) button,
-            #settings > .control-group:nth-child(12) button {
+            #settings>.control-group:nth-child(10) button,
+            #settings>.control-group:nth-child(11) button,
+            #settings>.control-group:nth-child(12) button {
                 width: 100%;
             }
 
@@ -644,11 +681,12 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Suppress Three.js deprecation warning immediately -->
     <script>
         const originalWarn = console.warn;
-        console.warn = function(...args) {
+        console.warn = function (...args) {
             if (typeof args[0] === 'string' && args[0].includes('deprecated')) return;
             originalWarn.apply(console, args);
         };
@@ -693,17 +731,25 @@
             </div>
         </div>
 
-        <div class="control-group" style="margin-bottom: 0; font-size: 12px; color: var(--text-secondary); text-align: center;">
-            <span>Vertices: <strong id="vertex-count" style="color: var(--text-primary);">0</strong>, Edges: <strong id="edge-count" style="color: var(--text-primary);">0</strong>, Faces: <strong id="face-count" style="color: var(--text-primary);">0</strong></span>
+        <div class="control-group"
+            style="margin-bottom: 0; font-size: 12px; color: var(--text-secondary); text-align: center;">
+            <span>Vertices: <strong id="vertex-count" style="color: var(--text-primary);">0</strong>, Edges: <strong
+                    id="edge-count" style="color: var(--text-primary);">0</strong>, Faces: <strong id="face-count"
+                    style="color: var(--text-primary);">0</strong></span>
         </div>
     </div>
 
     <!-- Recenter button -->
-    <button id="recenter-btn" title="Recenter view on model"><span class="icon">⊙</span> Recenter view</button>
+    <!-- Recenter button -->
+    <div id="recenter-container">
+        <button id="recenter-btn" title="Recenter view on model">⊙</button>
+        <span class="recenter-label">Recenter</span>
+    </div>
 
     <div id="settings" class="noise-overlay">
-        <h3><span>Settings</span><button class="collapse-btn" id="settings-collapse-btn" title="Collapse">▼</button></h3>
-        
+        <h3><span>Settings</span><button class="collapse-btn" id="settings-collapse-btn" title="Collapse">▼</button>
+        </h3>
+
         <div class="control-group">
             <label for="lighting-rotation">Lighting Rotation:
                 <span class="slider-value" id="lighting-rotation-value">180°</span>
@@ -741,12 +787,14 @@
         </div>
 
         <div class="control-group center-content">
-            <button id="toggle-skybox-bottom" style="background: rgba(108, 117, 125, 0.8);">Toggle Skybox Bottom</button>
+            <button id="toggle-skybox-bottom" style="background: rgba(108, 117, 125, 0.8);">Toggle Skybox
+                Bottom</button>
         </div>
 
         <div class="control-group center-content divider-top">
             <label for="bg-color">Background Color:</label>
-            <input type="color" id="bg-color" value="#333333" style="width: 60px; height: 40px; cursor: pointer; border: none; border-radius: 4px;">
+            <input type="color" id="bg-color" value="#333333"
+                style="width: 60px; height: 40px; cursor: pointer; border: none; border-radius: 4px;">
         </div>
 
         <div class="control-group center-content">
@@ -764,7 +812,7 @@
       }
     }
     </script>
-    
+
     <!-- GSAP (local) -->
     <script src="gsap.min.js"></script>
 
@@ -775,4 +823,5 @@
     <!-- Main application script as module -->
     <script type="module" src="main.js"></script>
 </body>
+
 </html>
