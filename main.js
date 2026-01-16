@@ -5,13 +5,30 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/controls';
 import { OBJLoader } from 'three/loaders';
 
+// ===== Loading Overlay Helpers =====
+const loadingOverlay = document.getElementById('loading-overlay');
+const loadingText = loadingOverlay?.querySelector('.loading-text');
+
+function showLoading(message = 'Loading model...') {
+    if (loadingOverlay) {
+        if (loadingText) loadingText.textContent = message;
+        loadingOverlay.classList.add('visible');
+    }
+}
+
+function hideLoading() {
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('visible');
+    }
+}
+
 // ===== Scene Setup =====
 const scene = new THREE.Scene();
 
 // ===== Sky Shader Setup =====
 // Procedural sky shader
 const createSkyMesh = () => {
-  const vertexShader = `
+    const vertexShader = `
     varying vec3 vWorldPosition;
     void main() {
       vec4 worldPosition = modelMatrix * vec4(position, 1.0);
@@ -19,8 +36,8 @@ const createSkyMesh = () => {
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `;
-  
-  const fragmentShader = `
+
+    const fragmentShader = `
     precision highp float;
     varying vec3 vWorldPosition;
     uniform vec3 sunPosition;
@@ -56,22 +73,22 @@ const createSkyMesh = () => {
       gl_FragColor = vec4(skyColor, 1.0);
     }
   `;
-  
-  const geometry = new THREE.SphereGeometry(1, 32, 32);
-  const material = new THREE.ShaderMaterial({
-    name: 'SkyShader',
-    side: THREE.BackSide,
-    depthWrite: false,
-    uniforms: {
-      sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
+
+    const geometry = new THREE.SphereGeometry(1, 32, 32);
+    const material = new THREE.ShaderMaterial({
+        name: 'SkyShader',
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+            sunPosition: { value: new THREE.Vector3(1, 1, 1).normalize() },
             showHorizonCutoff: { value: 0.0 },
-      horizonColor: { value: new THREE.Color(0x333333) }
-    },
-    vertexShader: vertexShader,
-    fragmentShader: fragmentShader
-  });
-  
-  return new THREE.Mesh(geometry, material);
+            horizonColor: { value: new THREE.Color(0x333333) }
+        },
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader
+    });
+
+    return new THREE.Mesh(geometry, material);
 };
 
 const sky = createSkyMesh();
@@ -83,14 +100,14 @@ let sunAzimuth = 135;
 const sunVector = new THREE.Vector3();
 
 function updateSunPosition() {
-  const phi = THREE.MathUtils.degToRad(90 - sunElevation);
-  const theta = THREE.MathUtils.degToRad(sunAzimuth);
-  sunVector.setFromSphericalCoords(1, phi, theta);
-  sky.material.uniforms.sunPosition.value.copy(sunVector);
-  
-  // Also update keyLight position to match sun (scaled to reasonable distance)
-  const sunDistance = 10;
-  keyLight.position.copy(sunVector).multiplyScalar(sunDistance);
+    const phi = THREE.MathUtils.degToRad(90 - sunElevation);
+    const theta = THREE.MathUtils.degToRad(sunAzimuth);
+    sunVector.setFromSphericalCoords(1, phi, theta);
+    sky.material.uniforms.sunPosition.value.copy(sunVector);
+
+    // Also update keyLight position to match sun (scaled to reasonable distance)
+    const sunDistance = 10;
+    keyLight.position.copy(sunVector).multiplyScalar(sunDistance);
 }
 
 // Sky follows camera
@@ -101,6 +118,7 @@ camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setClearColor(0x333333);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -111,9 +129,9 @@ document.getElementById('canvas-container').appendChild(renderer.domElement);
 // ===== Lighting Setup =====
 // Hemisphere light to match sky colors (blue top, warm bottom)
 const hemisphereLight = new THREE.HemisphereLight(
-  0x87ceeb, // sky color (blue)
-  0xffa644, // ground color (warm orange)
-  0.6       // intensity
+    0x87ceeb, // sky color (blue)
+    0xffa644, // ground color (warm orange)
+    0.6       // intensity
 );
 scene.add(hemisphereLight);
 
@@ -152,14 +170,14 @@ axesHelper.scale.set(0.1, 0.1, 0.1);
 // Floor axes helper with custom colors
 const floorAxesGeometry = new THREE.BufferGeometry();
 const floorAxesPositions = new Float32Array([
-    0, 0, 0,  6, 0, 0,  // X axis (red)
-    0, 0, 0,  0, 0, 0,  // Y axis (black)
-    0, 0, 0,  0, 0, 6   // Z axis (blue)
+    0, 0, 0, 6, 0, 0,  // X axis (red)
+    0, 0, 0, 0, 0, 0,  // Y axis (black)
+    0, 0, 0, 0, 0, 6   // Z axis (blue)
 ]);
 const floorAxesColors = new Float32Array([
-    1, 0, 0,  1, 0, 0,  // Red for X
-    0, 0, 0,  0, 0, 0,  // Black for Y
-    0, 0, 1,  0, 0, 1   // Blue for Z
+    1, 0, 0, 1, 0, 0,  // Red for X
+    0, 0, 0, 0, 0, 0,  // Black for Y
+    0, 0, 1, 0, 0, 1   // Blue for Z
 ]);
 floorAxesGeometry.setAttribute('position', new THREE.BufferAttribute(floorAxesPositions, 3));
 floorAxesGeometry.setAttribute('color', new THREE.BufferAttribute(floorAxesColors, 3));
@@ -189,6 +207,11 @@ let facesMesh = null;  // Merged faces mesh
 let facesInnerMesh = null; // Back-side faces for inside color
 let faceVisibility = [];  // Track individual face visibility for animation
 let mesh = null;
+// Animation State Tracking
+let activeVerticesTween = null;
+let activeEdgesTween = null;
+let activeFacesTween = null;
+let activeMeshTween = null;
 
 // ===== Custom Shader Material for Edges =====
 const edgeShaderMaterial = new THREE.ShaderMaterial({
@@ -307,6 +330,10 @@ const shapeGeometries = {
     sphere: () => new THREE.SphereGeometry(1, 16, 16)
 };
 
+// Built-in/custom OBJ models served with the app (populated from models.json)
+const presetModels = {};
+const customModelListPath = 'models/models.json';
+
 // ===== Lighting Configuration =====
 let lightingRotation = 180;
 let skyboxRotation = 212;
@@ -329,12 +356,12 @@ function rotateLights(angle) {
         const z = pos.x * sin + pos.z * cos;
         light.position.set(x, pos.y, z);
     });
-    
+
     // Update shader uniforms if assembled mesh exists
     if (mesh && mesh.material && mesh.material.uniforms) {
         mesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
     }
-    
+
     // Update shader uniforms if faces mesh exists
     if (facesMesh && facesMesh.material && facesMesh.material.uniforms) {
         facesMesh.material.uniforms.rimLightPos.value.copy(rimLight.position);
@@ -381,7 +408,7 @@ function updateVertexGeometry() {
     if (vertices) {
         // Kill any running animations before updating geometry
         gsap.killTweensOf(vertexScales);
-        
+
         // Update geometry with new size
         vertices.geometry.dispose();
         vertices.geometry = new THREE.SphereGeometry(vertexSize, 5, 3);
@@ -393,21 +420,36 @@ console.log('Initializing...');
 console.log('vertex-size input element:', document.getElementById('vertex-size'));
 updateGeometry();
 rotateLights(lightingRotation);
+loadCustomModelsFromFile();
 
 // ===== Event Listeners =====
-document.getElementById('shape-select').addEventListener('change', (e) => {
+document.getElementById('shape-select').addEventListener('change', async (e) => {
     currentShape = e.target.value;
+
+    // Reset any OBJ-specific material when switching to primitives
+    if (!presetModels[currentShape] && currentShape !== 'obj') {
+        currentGeometry = null;
+        currentMaterial = null;
+    }
+
     if (currentShape === 'obj') {
         document.getElementById('obj-file').click();
-    } else {
-        updateGeometry();
-        resetScene();
+        return;
     }
+
+    if (presetModels[currentShape]) {
+        await loadPresetModel(currentShape);
+        return;
+    }
+
+    updateGeometry();
+    resetScene();
 });
 
 document.getElementById('obj-file').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
+        showLoading('Loading OBJ file...');
         const reader = new FileReader();
         reader.onload = (event) => {
             const objLoader = new OBJLoader();
@@ -424,12 +466,107 @@ document.getElementById('obj-file').addEventListener('change', (e) => {
                 }
             } catch (error) {
                 console.error('Error loading OBJ:', error);
+            } finally {
+                hideLoading();
+            }
+
+            // Check if model actually loaded by verifying vertices exist
+            if (!currentGeometry || currentGeometry.attributes.position.count === 0) {
                 alert('Error loading OBJ file. Make sure it\'s a valid OBJ file.');
             }
         };
         reader.readAsText(file);
     }
 });
+
+async function loadPresetModel(key) {
+    const preset = presetModels[key];
+    if (!preset) return;
+
+    if (!preset.baseGeometry) {
+        showLoading('Loading model...');
+        try {
+            const response = await fetch(preset.path);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${preset.path}: ${response.status}`);
+            }
+
+            const objText = await response.text();
+            const objLoader = new OBJLoader();
+            const object = objLoader.parse(objText);
+            const meshChild = object.children.find(child => child.isMesh) || object.children[0];
+
+            if (!meshChild || !meshChild.geometry) {
+                throw new Error('No mesh geometry found in OBJ file.');
+            }
+
+            preset.baseGeometry = meshChild.geometry.clone();
+            preset.baseMaterial = meshChild.material ? meshChild.material.clone() : null;
+        } catch (error) {
+            console.error('Error loading OBJ:', error);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // Clone before modifying so cached geometry stays pristine
+    currentGeometry = preset.baseGeometry ? preset.baseGeometry.clone() : null;
+    currentMaterial = preset.baseMaterial ? preset.baseMaterial.clone() : null;
+
+    updateGeometry();
+    resetScene();
+
+    // Check if model actually loaded by verifying vertices exist
+    if (!currentGeometry || currentGeometry.attributes.position.count === 0) {
+        alert('Could not load the OBJ model. Please try again.');
+    }
+}
+
+async function loadCustomModelsFromFile() {
+    try {
+        const response = await fetch(customModelListPath);
+        if (!response.ok) {
+            console.warn(`Custom model list not found: ${customModelListPath} (${response.status})`);
+            return;
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+            console.warn('models.json must be an array of { id, title, path }');
+            return;
+        }
+
+        const selectEl = document.getElementById('shape-select');
+
+        data.forEach((item) => {
+            if (!item || !item.id || !item.path) return;
+            const id = String(item.id);
+            const title = item.title ? String(item.title) : id;
+            const path = String(item.path);
+
+            // Skip duplicates
+            if (presetModels[id]) return;
+
+            presetModels[id] = {
+                path,
+                baseGeometry: null,
+                baseMaterial: null
+            };
+
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = title;
+            selectEl.appendChild(option);
+        });
+
+        // Ensure "Load OBJ File" is always at the bottom
+        const objOption = selectEl.querySelector('option[value="obj"]');
+        if (objOption) {
+            selectEl.appendChild(objOption); // Moves it to the end
+        }
+    } catch (error) {
+        console.warn('Failed to load custom models list:', error);
+    }
+}
 
 document.getElementById('show-vertices').addEventListener('click', showVertices);
 document.getElementById('connect-edges').addEventListener('click', connectEdges);
@@ -497,13 +634,13 @@ document.getElementById('settings-reset').addEventListener('click', () => {
     // Toggles
     gridHelper.visible = true;
     floorAxesHelper.visible = true;
-    document.getElementById('toggle-floor-helpers').style.background = 'rgba(0, 123, 255, 0.8)';
+    // document.getElementById('toggle-floor-helpers').classList.add('active'); // Handled by init block below
 
     sky.visible = true;
-    document.getElementById('toggle-background').style.background = 'rgba(0, 123, 255, 0.8)';
+    // document.getElementById('toggle-background').classList.add('active'); // Handled by init block below
 
     sky.material.uniforms.showHorizonCutoff.value = 0.0;
-    document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+    // document.getElementById('toggle-skybox-bottom').classList.remove('active'); // Handled by init block below
 });
 
 let vertexSizeTimeout;
@@ -523,7 +660,7 @@ vertexSizeInput.addEventListener('input', (e) => {
     console.log('vertex-size INPUT event fired:', e.target.value);
     vertexSize = parseFloat(e.target.value);
     document.getElementById('vertex-size-value').textContent = vertexSize.toFixed(2);
-    
+
     // Debounce the geometry update to avoid lag while dragging
     clearTimeout(vertexSizeTimeout);
     vertexSizeTimeout = setTimeout(() => {
@@ -542,25 +679,24 @@ document.getElementById('toggle-floor-helpers').addEventListener('click', () => 
     floorHelpersVisible = !floorHelpersVisible;
     gridHelper.visible = floorHelpersVisible;
     floorAxesHelper.visible = floorHelpersVisible;
-    const button = document.getElementById('toggle-floor-helpers');
-    button.style.background = floorHelpersVisible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-floor-helpers').classList.toggle('active', floorHelpersVisible);
 });
 
 document.getElementById('toggle-background').addEventListener('click', () => {
     sky.visible = !sky.visible;
-    const button = document.getElementById('toggle-background');
-    button.style.background = sky.visible ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-background').classList.toggle('active', sky.visible);
 });
 
 document.getElementById('toggle-skybox-bottom').addEventListener('click', () => {
     const currentValue = sky.material.uniforms.showHorizonCutoff.value;
     sky.material.uniforms.showHorizonCutoff.value = currentValue > 0.5 ? 0.0 : 1.0;
-    const button = document.getElementById('toggle-skybox-bottom');
-    button.style.background = sky.material.uniforms.showHorizonCutoff.value > 0.5 ? 'rgba(0, 123, 255, 0.8)' : 'rgba(108, 117, 125, 0.8)';
+    document.getElementById('toggle-skybox-bottom').classList.toggle('active', sky.material.uniforms.showHorizonCutoff.value > 0.5);
 });
 
-// Initialize toggle state to off (bottom hidden)
-document.getElementById('toggle-skybox-bottom').style.background = 'rgba(108, 117, 125, 0.8)';
+// Initialize toggle styles
+document.getElementById('toggle-floor-helpers').classList.toggle('active', floorHelpersVisible);
+document.getElementById('toggle-background').classList.toggle('active', sky.visible);
+document.getElementById('toggle-skybox-bottom').classList.toggle('active', sky.material.uniforms.showHorizonCutoff.value > 0.5);
 
 // ===== Color Picker =====
 const bgColorInput = document.getElementById('bg-color');
@@ -584,18 +720,18 @@ function autoScaleAndPositionModel(geometry) {
      * Returns object with center and required camera distance to view entire model
      */
     if (!geometry) return { center: new THREE.Vector3(0, 0, 0), distance: 3 };
-    
+
     // Calculate bounding box
     geometry.computeBoundingBox();
     const bbox = geometry.boundingBox;
     const bboxSize = bbox.getSize(new THREE.Vector3());
     const bboxMin = bbox.min;
-    
+
     console.log('Initial bounding box:', { min: bboxMin.clone(), size: bboxSize.clone() });
-    
+
     // Find longest dimension
     const maxDimension = Math.max(bboxSize.x, bboxSize.y, bboxSize.z);
-    
+
     // Determine scale factor
     let scaleFactor = 1.0;
     if (maxDimension > 10) {
@@ -603,9 +739,9 @@ function autoScaleAndPositionModel(geometry) {
     } else if (maxDimension < 5) {
         scaleFactor = 5 / maxDimension;
     }
-    
+
     console.log('Scale factor:', scaleFactor, 'Max dimension:', maxDimension);
-    
+
     // Apply scaling to all vertices
     if (scaleFactor !== 1.0) {
         const posAttr = geometry.attributes.position;
@@ -616,21 +752,21 @@ function autoScaleAndPositionModel(geometry) {
         }
         posAttr.needsUpdate = true;
     }
-    
+
     // Recalculate bounding box after scaling
     geometry.computeBoundingBox();
     const scaledBbox = geometry.boundingBox;
     const scaledBboxMin = scaledBbox.min;
     const scaledBboxSize = scaledBbox.getSize(new THREE.Vector3());
-    
+
     console.log('After scaling, new min Y:', scaledBboxMin.y);
-    
+
     // Calculate vertical offset to place bottom on floor (floor is at Y = -1)
     const floorY = -1;
     const verticalOffset = floorY - scaledBboxMin.y;
-    
+
     console.log('Vertical offset to apply:', verticalOffset);
-    
+
     // Apply vertical offset to all vertices
     if (Math.abs(verticalOffset) > 0.0001) {
         const posAttr = geometry.attributes.position;
@@ -641,7 +777,7 @@ function autoScaleAndPositionModel(geometry) {
         }
         posAttr.needsUpdate = true;
     }
-    
+
     // Verify final position and calculate center
     geometry.computeBoundingBox();
     const finalBbox = geometry.boundingBox;
@@ -649,13 +785,13 @@ function autoScaleAndPositionModel(geometry) {
     const finalBboxSize = finalBbox.getSize(new THREE.Vector3());
     console.log('Final bounding box min Y:', finalBbox.min.y, '(should be -1 for floor)');
     console.log('Bounding box center:', bboxCenter.clone());
-    
+
     // Calculate required camera distance to view entire model
     // Use the largest dimension of the bounding box
     const maxFinalDimension = Math.max(finalBboxSize.x, finalBboxSize.y, finalBboxSize.z);
     const cameraVFOV = 75; // vertical field of view in degrees
     const aspectRatio = window.innerWidth / window.innerHeight;
-    
+
     // Determine which FOV to use based on window aspect ratio
     let effectiveFOV;
     if (aspectRatio > 1) {
@@ -672,38 +808,50 @@ function autoScaleAndPositionModel(geometry) {
         const hFOVRad = 2 * Math.atan(Math.tan(vFOVRad / 2) * aspectRatio);
         effectiveFOV = THREE.MathUtils.radToDeg(hFOVRad);
     }
-    
+
     const fovRad = THREE.MathUtils.degToRad(effectiveFOV);
     // Calculate distance: distance = (maxDimension / 2) / tan(fov/2)
     const requiredDistance = (maxFinalDimension / 2) / Math.tan(fovRad / 2);
-    // Add buffer (1.43x = 1.3 * 1.1 for comfortable viewing with extra space)
-    const cameraDistance = requiredDistance * 1.43;
-    
+    // Add buffer (increased to 2.0 to handle diagonals of blocky shapes like cubes)
+    const cameraDistance = requiredDistance * 2.0;
+
     console.log('Aspect ratio:', aspectRatio, 'Effective FOV:', effectiveFOV, 'Max final dimension:', maxFinalDimension, 'Required distance:', requiredDistance, 'Final distance:', cameraDistance);
-    
+
     return { center: bboxCenter, distance: cameraDistance };
 }
 
 function updateGeometry() {
-    if (currentShape === 'obj') {
-        if (!currentGeometry) return;
-    } else {
-        currentGeometry = shapeGeometries[currentShape]();
+    if (!currentGeometry) {
+        const shapeFactory = shapeGeometries[currentShape];
+        if (shapeFactory) {
+            currentGeometry = shapeFactory();
+            currentMaterial = null;
+        } else if (currentShape === 'obj') {
+            return;
+        } else {
+            console.warn('No geometry factory found for shape:', currentShape);
+            return;
+        }
     }
-    // Apply auto-scaling and floor positioning to all geometries
     const result = autoScaleAndPositionModel(currentGeometry);
     const { center, distance } = result;
-    
+
+    // Use centralized camera update
+    updateCameraView(center, distance);
+
+    extractData();
+    updateInfo();
+}
+
+function updateCameraView(center, distance) {
     // Update camera target to center on the model
     controls.target.copy(center);
-    
+
     // Position camera back from the center to view entire model
     const cameraDirection = new THREE.Vector3(0.5, 0.6, 0.7).normalize();
     camera.position.copy(center).addScaledVector(cameraDirection, distance);
-    
+
     controls.update();
-    extractData();
-    updateInfo();
 }
 
 function extractData() {
@@ -789,6 +937,10 @@ function showVertices() {
     const effectiveDuration = Math.min(BASE_DURATION, MAX_TIME);
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
 
+    // Instant feedback
+    const btn = document.getElementById('show-vertices');
+    if (btn) btn.classList.toggle('active', !vertices.visible);
+
     if (!vertices.visible) {
         // Show with animation
         verticesData.forEach((pos, index) => {
@@ -802,66 +954,107 @@ function showVertices() {
 
         if (MAX_TIME === 0) {
             verticesData.forEach((pos, index) => {
-                vertexScales[index] = 1;
                 const matrix = new THREE.Matrix4();
                 matrix.compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
                 vertices.setMatrixAt(index, matrix);
             });
             vertices.instanceMatrix.needsUpdate = true;
         } else {
-            verticesData.forEach((pos, index) => {
-                gsap.to(vertexScales, {
-                    [index]: 1,
-                    duration: effectiveDuration,
-                    delay: index * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        if (!vertices) return;
+            // Performance Fix: Single tween driving all instances instead of N tweens
+            const animData = { progress: 0 };
+
+            // Kill previous animation
+            if (activeVerticesTween) activeVerticesTween.kill();
+
+            activeVerticesTween = gsap.to(animData, {
+                progress: 1,
+                duration: effectiveDuration + (verticesData.length * delayPerItem), // Total time covers all staggers
+                ease: "none",
+                onUpdate: () => {
+                    if (!vertices) return;
+
+                    const currentTime = animData.progress * (effectiveDuration + (verticesData.length * delayPerItem));
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < verticesData.length; i++) {
+                        // Calculate local progress for this item based on its start time
+                        const startTime = i * delayPerItem;
+                        // Map global time to local 0-1 factor
+                        let factor = (currentTime - startTime) / effectiveDuration;
+                        factor = Math.max(0, Math.min(1, factor)); // Clamp 0-1
+
+                        // Optimization: Only update if changing or not yet final
+                        // (Use tracking array to avoid redundant updates if desired, but this math is cheap)
+
+                        const scale = factor;
                         const matrix = new THREE.Matrix4();
                         matrix.compose(
-                            pos,
+                            verticesData[i],
                             new THREE.Quaternion(),
-                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                            new THREE.Vector3(scale, scale, scale)
                         );
-                        vertices.setMatrixAt(index, matrix);
+                        vertices.setMatrixAt(i, matrix);
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
                         vertices.instanceMatrix.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeVerticesTween = null;
+                }
             });
         }
-        document.getElementById('show-vertices').textContent = 'Hide Vertices';
     } else {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             vertices.visible = false;
-            document.getElementById('show-vertices').textContent = 'Show Vertices';
         } else {
-            const reverseCount = verticesData.length - 1;
-            verticesData.forEach((pos, index) => {
-                const reverseDelay = (reverseCount - index) * delayPerItem;
-                gsap.to(vertexScales, {
-                    [index]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        if (!vertices) return;
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (verticesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeVerticesTween) activeVerticesTween.kill();
+
+            activeVerticesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!vertices) return;
+
+                    const currentTime = animData.progress * totalDuration;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < verticesData.length; i++) {
+                        // Reverse index logic: last item starts first
+                        const reverseIndex = (verticesData.length - 1) - i;
+                        const startTime = i * delayPerItem; // Linear delay based on loop index
+
+                        // Map to local 0-1 factor (reversed: 1 -> 0)
+                        let factor = (currentTime - startTime) / effectiveDuration;
+                        factor = 1 - Math.max(0, Math.min(1, factor)); // Invert for hiding
+
+                        const scale = factor;
                         const matrix = new THREE.Matrix4();
                         matrix.compose(
-                            pos,
+                            verticesData[reverseIndex], // Use reverseIndex for position to match visual 'unzipping'
                             new THREE.Quaternion(),
-                            new THREE.Vector3(vertexScales[index], vertexScales[index], vertexScales[index])
+                            new THREE.Vector3(scale, scale, scale)
                         );
-                        vertices.setMatrixAt(index, matrix);
-                        vertices.instanceMatrix.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (index === 0) {
-                            vertices.visible = false;
-                            document.getElementById('show-vertices').textContent = 'Show Vertices';
-                        }
+                        vertices.setMatrixAt(reverseIndex, matrix);
+                        needsUpdate = true;
                     }
-                });
+
+                    if (needsUpdate) {
+                        vertices.instanceMatrix.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (vertices) vertices.visible = false;
+                    activeVerticesTween = null;
+                }
             });
         }
     }
@@ -885,11 +1078,11 @@ function connectEdges() {
         edgesData.forEach((edge, edgeIndex) => {
             const p1 = verticesData[edge[0]];
             const p2 = verticesData[edge[1]];
-            
+
             // Add two vertices per line
             positions.push(p1.x, p1.y, p1.z);
             positions.push(p2.x, p2.y, p2.z);
-            
+
             // Both vertices of the line share same visibility for this edge
             visibilityArray.push(0, 0);
         });
@@ -919,6 +1112,10 @@ function connectEdges() {
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = edgesMesh.geometry;
 
+    // Instant feedback
+    const btn = document.getElementById('connect-edges');
+    if (btn) btn.classList.toggle('active', !edgesMesh.visible);
+
     if (!edgesMesh.visible) {
         // Show with animation
         edgesData.forEach((edge, edgeIndex) => {
@@ -939,49 +1136,84 @@ function connectEdges() {
             });
             geometry.attributes.visibility.needsUpdate = true;
         } else {
-            edgesData.forEach((edge, edgeIndex) => {
-                gsap.to(edgeVisibility, {
-                    [edgeIndex]: 1,
-                    duration: effectiveDuration,
-                    delay: edgeIndex * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
+            // Performance Fix: Single tween driving all instances
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (edgesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeEdgesTween) activeEdgesTween.kill();
+
+            activeEdgesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < edgesData.length; i++) {
+                        const startTime = i * delayPerItem;
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = Math.max(0, Math.min(1, val));
+
+                        edgeVisibility[i] = val;
+                        visAttr[i * 2] = val;
+                        visAttr[i * 2 + 1] = val;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
                         geometry.attributes.visibility.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeEdgesTween = null;
+                }
             });
         }
-        document.getElementById('connect-edges').textContent = 'Hide Edges';
     } else {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             edgesMesh.visible = false;
-            document.getElementById('connect-edges').textContent = 'Show Edges';
         } else {
-            const reverseCount = edgesData.length - 1;
-            edgesData.forEach((edge, edgeIndex) => {
-                const reverseDelay = (reverseCount - edgeIndex) * delayPerItem;
-                gsap.to(edgeVisibility, {
-                    [edgeIndex]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[edgeIndex * 2] = edgeVisibility[edgeIndex];
-                        visAttr[edgeIndex * 2 + 1] = edgeVisibility[edgeIndex];
-                        geometry.attributes.visibility.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (edgeIndex === 0) {
-                            edgesMesh.visible = false;
-                            document.getElementById('connect-edges').textContent = 'Show Edges';
-                        }
+            // Performance Fix: Single tween driving all instances (Reverse)
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (edgesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeEdgesTween) activeEdgesTween.kill();
+
+            activeEdgesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!edgesMesh) return;
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < edgesData.length; i++) {
+                        // Reverse index logic
+                        const reverseIndex = (edgesData.length - 1) - i;
+                        const startTime = i * delayPerItem;
+
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = 1 - Math.max(0, Math.min(1, val)); // Invert
+
+                        edgeVisibility[reverseIndex] = val;
+                        visAttr[reverseIndex * 2] = val;
+                        visAttr[reverseIndex * 2 + 1] = val;
+                        needsUpdate = true;
                     }
-                });
+                    if (needsUpdate) {
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (edgesMesh) edgesMesh.visible = false;
+                    activeEdgesTween = null;
+                }
             });
         }
     }
@@ -1062,6 +1294,10 @@ function formFaces() {
     const delayPerItem = itemCount > 1 ? Math.max(0, (MAX_TIME - effectiveDuration) / (itemCount - 1)) : 0;
     const geometry = facesMesh.geometry;
 
+    // Instant feedback
+    const btn = document.getElementById('form-faces');
+    if (btn) btn.classList.toggle('active', !facesMesh.visible);
+
     if (!facesMesh.visible) {
         // Show with animation
         facesData.forEach((face, faceIndex) => {
@@ -1085,53 +1321,90 @@ function formFaces() {
             });
             geometry.attributes.visibility.needsUpdate = true;
         } else {
-            facesData.forEach((face, faceIndex) => {
-                gsap.to(faceVisibility, {
-                    [faceIndex]: 1,
-                    duration: effectiveDuration,
-                    delay: faceIndex * delayPerItem,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
+            // Performance Fix: Single tween driving all instances
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (facesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeFacesTween) activeFacesTween.kill();
+
+            activeFacesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < facesData.length; i++) {
+                        const startTime = i * delayPerItem;
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = Math.max(0, Math.min(1, val));
+
+                        faceVisibility[i] = val;
+                        visAttr[i * 3] = val;
+                        visAttr[i * 3 + 1] = val;
+                        visAttr[i * 3 + 2] = val;
+                        needsUpdate = true;
+                    }
+                    if (needsUpdate) {
                         geometry.attributes.visibility.needsUpdate = true;
                     }
-                });
+                },
+                onComplete: () => {
+                    activeFacesTween = null;
+                }
             });
         }
-        document.getElementById('form-faces').textContent = 'Hide Faces';
     } else {
         // Hide with reverse animation
         if (MAX_TIME === 0) {
             facesMesh.visible = false;
             if (facesInnerMesh) facesInnerMesh.visible = false;
-            document.getElementById('form-faces').textContent = 'Show Faces';
         } else {
-            const reverseCount = facesData.length - 1;
-            facesData.forEach((face, faceIndex) => {
-                const reverseDelay = (reverseCount - faceIndex) * delayPerItem;
-                gsap.to(faceVisibility, {
-                    [faceIndex]: 0,
-                    duration: effectiveDuration,
-                    delay: reverseDelay,
-                    ease: "none",
-                    onUpdate: () => {
-                        const visAttr = geometry.attributes.visibility.array;
-                        visAttr[faceIndex * 3] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 1] = faceVisibility[faceIndex];
-                        visAttr[faceIndex * 3 + 2] = faceVisibility[faceIndex];
-                        geometry.attributes.visibility.needsUpdate = true;
-                    },
-                    onComplete: () => {
-                        if (faceIndex === 0) {
-                            facesMesh.visible = false;
-                            if (facesInnerMesh) facesInnerMesh.visible = false;
-                            document.getElementById('form-faces').textContent = 'Show Faces';
-                        }
+            // Performance Fix: Single tween driving all instances (Reverse)
+            const animData = { progress: 0 };
+            const totalDuration = effectiveDuration + (facesData.length * delayPerItem);
+
+            // Kill previous animation
+            if (activeFacesTween) activeFacesTween.kill();
+
+            activeFacesTween = gsap.to(animData, {
+                progress: 1,
+                duration: totalDuration,
+                ease: "none",
+                onUpdate: () => {
+                    if (!facesMesh) return;
+                    const currentTime = animData.progress * totalDuration;
+                    const visAttr = geometry.attributes.visibility.array;
+                    let needsUpdate = false;
+
+                    for (let i = 0; i < facesData.length; i++) {
+                        // Reverse index logic
+                        const reverseIndex = (facesData.length - 1) - i;
+                        const startTime = i * delayPerItem;
+
+                        let val = (currentTime - startTime) / effectiveDuration;
+                        val = 1 - Math.max(0, Math.min(1, val)); // Invert
+
+                        faceVisibility[reverseIndex] = val;
+                        visAttr[reverseIndex * 3] = val;
+                        visAttr[reverseIndex * 3 + 1] = val;
+                        visAttr[reverseIndex * 3 + 2] = val;
+                        needsUpdate = true;
                     }
-                });
+                    if (needsUpdate) {
+                        geometry.attributes.visibility.needsUpdate = true;
+                    }
+                },
+                onComplete: () => {
+                    if (facesMesh) {
+                        facesMesh.visible = false;
+                        if (facesInnerMesh) facesInnerMesh.visible = false;
+                    }
+                    activeFacesTween = null;
+                }
             });
         }
     }
@@ -1151,13 +1424,13 @@ function assembleMesh() {
 
         // Create complete mesh with dither dissolve shader
         const geometry = currentGeometry.clone();
-        
+
         // Get base color from original material or use default
         let baseColor = new THREE.Color(0xffffff);
         if (currentMaterial && currentMaterial.color) {
             baseColor.copy(currentMaterial.color);
         }
-        
+
         // Custom shader material with dither dissolve effect and PBR
         const material = new THREE.ShaderMaterial({
             uniforms: {
@@ -1230,10 +1503,14 @@ function assembleMesh() {
             depthTest: true,
             depthWrite: true
         });
-        
+
         mesh = new THREE.Mesh(geometry, material);
         mesh.renderOrder = 2; // ensure assembled renders after faces
         scene.add(mesh);
+
+        // Instant feedback
+        const btn = document.getElementById('assemble-mesh');
+        if (btn) btn.classList.add('active');
 
         // Animate dither dissolve - duration equals slider value
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
@@ -1249,13 +1526,16 @@ function assembleMesh() {
                 ease: "none"
             });
         }
-        document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
     } else {
         // Always animate on toggle
         const material = mesh.material;
         const ASSEMBLY_DURATION = Math.max(0, animationMaxTime);
         gsap.killTweensOf(material.uniforms.dissolve);
-        
+
+        // Instant feedback
+        const btn = document.getElementById('assemble-mesh');
+        if (btn) btn.classList.toggle('active', !mesh.visible);
+
         if (!mesh.visible) {
             // Show with dissolve-in
             material.uniforms.dissolve.value = 0;
@@ -1263,39 +1543,56 @@ function assembleMesh() {
             if (ASSEMBLY_DURATION === 0) {
                 material.uniforms.dissolve.value = 1;
             } else {
-                gsap.to(material.uniforms.dissolve, {
+                // Kill previous animation
+                if (activeMeshTween) activeMeshTween.kill();
+
+                activeMeshTween = gsap.to(material.uniforms.dissolve, {
                     value: 1,
-                    duration: ASSEMBLY_DURATION,
-                    ease: "none"
-                });
-            }
-            document.getElementById('assemble-mesh').textContent = 'Hide Assembled Mesh';
-        } else {
-            // Hide with dissolve-out
-            // Do not force-show faces if they were hidden
-            if (ASSEMBLY_DURATION === 0) {
-                material.uniforms.dissolve.value = 0;
-                mesh.visible = false;
-                document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
-            } else {
-                gsap.to(material.uniforms.dissolve, {
-                    value: 0,
                     duration: ASSEMBLY_DURATION,
                     ease: "none",
                     onComplete: () => {
-                        mesh.visible = false;
-                        document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
+                        activeMeshTween = null;
                     }
                 });
             }
+        } else {
+            // Hide with dissolve animation
+            if (mesh) {
+                const material = mesh.material;
+
+                if (ASSEMBLY_DURATION === 0) {
+                    material.uniforms.dissolve.value = 0;
+                    mesh.visible = false;
+                } else {
+                    // Kill previous animation
+                    if (activeMeshTween) activeMeshTween.kill();
+
+                    activeMeshTween = gsap.to(material.uniforms.dissolve, {
+                        value: 0,
+                        duration: ASSEMBLY_DURATION,
+                        ease: "none",
+                        onComplete: () => {
+                            mesh.visible = false;
+                            activeMeshTween = null;
+                        }
+                    });
+                }
+            }
         }
     }
+
 }
 
 function resetScene() {
     clearObjects();
     document.getElementById('info-text').textContent = 'Click buttons to visualize 3D modeling concepts';
     updateInfo();
+
+    // Reset button states
+    ['show-vertices', 'connect-edges', 'form-faces', 'assemble-mesh'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove('active');
+    });
 }
 
 function clearObjects() {
@@ -1303,25 +1600,22 @@ function clearObjects() {
     gsap.killTweensOf(vertexScales);
     gsap.killTweensOf(edgeVisibility);
     gsap.killTweensOf(faceVisibility);
-    
+
     if (vertices) {
         scene.remove(vertices);
         vertices = null;
         window.verticesMesh = null;
         vertexScales = [];
-        document.getElementById('show-vertices').textContent = 'Show Vertices';
     }
     if (edgesMesh) {
         scene.remove(edgesMesh);
         edgesMesh = null;
         edgeVisibility = [];
-        document.getElementById('connect-edges').textContent = 'Show Edges';
     }
     if (facesMesh) {
         scene.remove(facesMesh);
         facesMesh = null;
         faceVisibility = [];
-        document.getElementById('form-faces').textContent = 'Show Faces';
     }
     if (facesInnerMesh) {
         scene.remove(facesInnerMesh);
@@ -1329,7 +1623,6 @@ function clearObjects() {
     }
     if (mesh) scene.remove(mesh);
     mesh = null;
-    document.getElementById('assemble-mesh').textContent = 'Show Assembled Mesh';
 }
 
 function updateInfo() {
@@ -1338,10 +1631,36 @@ function updateInfo() {
     document.getElementById('face-count').textContent = facesData.length;
 }
 
+// ===== Mobile & Desktop UI Management =====
+// Global state for access in animate loop
+let isCollapsed = false;
+const isMobile = () => window.innerWidth <= 535;
+let currentMode = isMobile() ? 'mobile' : 'desktop';
+
 // ===== Animation Loop =====
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+
+    // Apply camera offset for panels (after OrbitControls update)
+    // Only applies when settings panel is expanded (interactive state)
+    // And if the user has enabled the offset behavior
+    const offsetToggle = document.getElementById('camera-offset-toggle');
+    const offsetEnabled = offsetToggle ? offsetToggle.checked : true;
+
+    if (!isCollapsed && offsetEnabled) {
+        if (currentMode === 'mobile') {
+            // Mobile: Rotate around right axis (local X)
+            // Use -20 degrees as per requirement
+            camera.rotateX(THREE.MathUtils.degToRad(-20));
+        } else {
+            // Desktop: Rotate around local Up axis (Yaw)
+            const angle = THREE.MathUtils.degToRad(-12);
+            const up = camera.up.clone().normalize();
+            const quat = new THREE.Quaternion().setFromAxisAngle(up, angle);
+            camera.quaternion.premultiply(quat);
+        }
+    }
 
     // Update navigation axes orientation
     const camQuat = camera.quaternion.clone();
@@ -1360,4 +1679,113 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
 });
+
+// ===== Service Worker Registration =====
+if ('serviceWorker' in navigator) {
+    const baseUrl = new URL('.', import.meta.url).pathname;
+    navigator.serviceWorker.register('service-worker.js', { scope: baseUrl })
+        .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+}
+
+// ===== UI Initialization & Event Handling =====
+(function initUI() {
+    const settingsPanel = document.getElementById('settings');
+
+    // Helper to apply offsets immediately on interaction (optional, but good for responsiveness)
+    function applyPanelCameraOffset() {
+        // We leave the continuous update to animate(), but we can ensure controls are fresh
+        controls.update();
+    }
+
+    function syncPanelState() {
+        // Apply the user's preference (collapsed or not) based on current layout
+        if (isCollapsed) {
+            settingsPanel.classList.add('collapsed');
+            settingsPanel.classList.remove('expanded');
+        } else {
+            settingsPanel.classList.remove('collapsed');
+            settingsPanel.classList.add('expanded');
+        }
+    }
+
+    function applyMobileStyles() {
+        if (isMobile()) {
+            settingsPanel.style.position = 'fixed';
+        } else {
+            // In desktop mode, let CSS handle positioning (don't override with inline styles)
+            settingsPanel.style.position = '';
+        }
+        // Sync the panel state after layout change
+        syncPanelState();
+    }
+
+    if (settingsPanel) {
+        // Start with panel closed on mobile, open on desktop
+        // Initialize state
+        isCollapsed = isMobile(); // Default closed on mobile, open on desktop
+        applyMobileStyles();
+
+        // Updated: Click handler for the *entire* header
+        const header = settingsPanel.querySelector('.settings-header');
+        if (header) {
+            header.addEventListener('click', (e) => {
+                // Toggle state
+                isCollapsed = !isCollapsed;
+                syncPanelState();
+            });
+        }
+    }
+
+    // Reapply mobile styles on resize, but only sync state if mode changed
+    window.addEventListener('resize', () => {
+        if (settingsPanel) {
+            const newMode = isMobile() ? 'mobile' : 'desktop';
+            if (newMode !== currentMode) {
+                currentMode = newMode;
+                // Mode changed (mobile <-> desktop), apply layout change
+                // Temporarily disable transitions to prevent animation on breakpoint change
+                settingsPanel.style.transition = 'none';
+
+                const controlGroups = settingsPanel.querySelectorAll('.control-group');
+                controlGroups.forEach(el => el.style.transition = 'none');
+
+                currentMode = newMode;
+                applyMobileStyles();
+
+                // Re-enable transitions after a frame
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        settingsPanel.style.transition = '';
+                        controlGroups.forEach(el => el.style.transition = '');
+                    });
+                });
+            } else {
+                // Same mode, just update position without triggering animation
+                if (currentMode === 'mobile') {
+                    settingsPanel.style.position = 'fixed';
+                } else {
+                    settingsPanel.style.position = '';
+                }
+            }
+        }
+    });
+
+    // Recenter button functionality
+    const recenterBtn = document.getElementById('recenter-container');
+    if (recenterBtn) {
+        recenterBtn.addEventListener('click', () => {
+            if (!currentGeometry) return;
+
+            // Recalculate view based on current model's bounding box
+            const { center, distance } = autoScaleAndPositionModel(currentGeometry);
+
+            // Use the centralized camera update function
+            updateCameraView(center, distance);
+        });
+    }
+
+    console.log('UI initialized with state persistence');
+})();
