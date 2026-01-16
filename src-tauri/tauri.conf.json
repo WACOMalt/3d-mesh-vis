@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "3d-mesh-vis",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "identifier": "com.wacomalt.3dmeshvis",
   "build": {
     "frontendDist": "../public",
