@@ -38,7 +38,7 @@ jobs:
 
           # 3. Update tauri.conf.json version
           # Use jq to update or simple sed if jq is missing (jq is standard on ubuntu-latest)
-          jq ".package.version = \"$NEW_VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+          jq ".version = \"$NEW_VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
           # 4. Commit and Tag
           git add package.json package-lock.json src-tauri/tauri.conf.json
