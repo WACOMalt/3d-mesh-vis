@@ -98,9 +98,10 @@ jobs:
 
   build-tauri-linux-arm:
     # Dedicated job for Linux ARM64 using QEMU emulation
+    # Reverted to Cloud Runner due to Docker-in-Docker volume mapping issues on self-hosted
     needs: create-release
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'push' || !contains(github.event.release.body, '[Local Build]'))
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build Linux ARM64
@@ -117,7 +118,13 @@ jobs:
             curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
             apt-get install -y nodejs
           run: |
-            # Self-hosted runner optimization: Full speed ahead!
+            export CARGO_BUILD_JOBS=1
+            # Create 4GB swap file to prevent QEMU OOM crashes
+            sudo fallocate -l 4G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+            
             source $HOME/.cargo/env
             npm install
             npm run tauri build
