@@ -116,6 +116,8 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
             apt-get install -y nodejs
+          env:
+            CARGO_BUILD_JOBS: 1
           run: |
             source $HOME/.cargo/env
             npm install
