@@ -119,6 +119,12 @@ jobs:
           env: |
             CARGO_BUILD_JOBS=1
           run: |
+            # Create 4GB swap file to prevent QEMU OOM crashes
+            fallocate -l 4G /swapfile
+            chmod 600 /swapfile
+            mkswap /swapfile
+            swapon /swapfile
+            
             source $HOME/.cargo/env
             npm install
             npm run tauri build
