@@ -117,13 +117,8 @@ jobs:
             curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
             apt-get install -y nodejs
           run: |
-            export CARGO_BUILD_JOBS=1
-            # Create 4GB swap file to prevent QEMU OOM crashes
-            fallocate -l 4G /swapfile
-            chmod 600 /swapfile
-            mkswap /swapfile
-            swapon /swapfile
-            
+          run: |
+            # Self-hosted runner optimization: Full speed ahead!
             source $HOME/.cargo/env
             npm install
             npm run tauri build
@@ -143,7 +138,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-22.04'
+          - platform: 'self-hosted'
             args: ''
             target: ''
             files: |
@@ -184,7 +179,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'self-hosted'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
