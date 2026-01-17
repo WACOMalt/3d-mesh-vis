@@ -1,0 +1,11 @@
+node_modules
+src-tauri/target
+target
+.git
+.github
+.vscode
+dist
+build
+output
+*.log
+.DS_Store
