@@ -34,7 +34,7 @@ jobs:
     # Use always() to run even if create-release was skipped (e.g. valid release event)
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'push' || !contains(github.event.release.body, '[Local Build]'))
     needs: create-release
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -55,7 +55,7 @@ jobs:
   deploy-pages:
     needs: build-web
     if: always() && needs.build-web.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:
@@ -100,7 +100,7 @@ jobs:
     # Dedicated job for Linux ARM64 using QEMU emulation
     needs: create-release
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'push' || !contains(github.event.release.body, '[Local Build]'))
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Build Linux ARM64
